@@ -1,0 +1,37 @@
+# Empório Japa Gourmet — Raiz do site
+
+# Forçar HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Bloquear acesso direto a arquivos de include PHP
+RewriteRule ^emporio/includes/ - [F,L]
+
+# Bloquear listagem de diretórios
+Options -Indexes
+
+# Charset padrão
+AddDefaultCharset UTF-8
+
+# Cache de assets estáticos
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/webp  "access plus 1 month"
+  ExpiresByType image/jpeg  "access plus 1 month"
+  ExpiresByType image/png   "access plus 1 month"
+  ExpiresByType text/css    "access plus 1 week"
+  ExpiresByType text/javascript "access plus 1 week"
+</IfModule>
+
+# Compressão gzip
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
+# Headers de segurança
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

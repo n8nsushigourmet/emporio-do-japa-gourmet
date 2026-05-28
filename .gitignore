@@ -1,0 +1,20 @@
+# Segredos — nunca commitar
+.env
+.env.local
+.env.production.local
+
+# Fotos de produtos geradas pelo admin (upload)
+uploads/produtos/*.webp
+uploads/produtos/*.jpg
+uploads/produtos/*.jpeg
+uploads/produtos/*.png
+!uploads/produtos/.htaccess
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp

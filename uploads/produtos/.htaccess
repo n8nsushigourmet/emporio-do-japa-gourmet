@@ -1,0 +1,6 @@
+# Bloquear execução de PHP nos uploads (segurança)
+<FilesMatch "\.php$">
+  Order Allow,Deny
+  Deny from all
+</FilesMatch>
+Options -Indexes
