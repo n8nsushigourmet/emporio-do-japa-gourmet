@@ -12,6 +12,7 @@ Loja virtual de ingredientes e acessórios para fazer sushi em casa, operada pel
 |---|---|
 | Loja (cliente) | `emporio.sushigourmet.com.br` |
 | Painel admin | `emporio.sushigourmet.com.br/emporio` |
+| Repositório GitHub | `https://github.com/n8nsushigourmet/emporio-do-japa-gourmet` |
 
 ---
 
@@ -32,17 +33,25 @@ Loja virtual de ingredientes e acessórios para fazer sushi em casa, operada pel
 
 ## Infraestrutura e variáveis de ambiente
 
-### Variáveis necessárias (configurar no Vercel → Settings → Environment Variables)
+### Variáveis configuradas (`.env.local` — nunca commitar)
 
-| Variável | Descrição |
+| Variável | Valor |
 |---|---|
-| `DB_HOST` | Host do Supabase (ex: `aws-1-us-west-2.pooler.supabase.com`) |
-| `DB_PORT` | Porta — `5432` |
-| `DB_NAME` | Nome do banco — `postgres` |
-| `DB_USER` | Usuário Supabase (ex: `postgres.SEU_PROJECT_ID`) |
-| `DB_PASS` | Senha do banco (nunca commitar) |
+| `DB_HOST` | `aws-1-sa-east-1.pooler.supabase.com` |
+| `DB_PORT` | `5432` |
+| `DB_NAME` | `postgres` |
+| `DB_USER` | `postgres.tecpmlrhrbvjvqevdcke` |
+| `DB_PASS` | *(ver `.env.local`)* |
+| `GITHUB_TOKEN` | *(ver `.env.local`)* |
+| `VERCEL_TOKEN` | *(a configurar)* |
 
-O arquivo `.env.example` na raiz do projeto documenta essas variáveis. O `.env` real está no `.gitignore`.
+O arquivo `.env.example` na raiz documenta as variáveis. O `.env.local` real está no `.gitignore`.
+
+### Supabase
+
+- **Project ID:** `tecpmlrhrbvjvqevdcke`
+- **Região:** `sa-east-1` (São Paulo)
+- **Schema:** executado em 2026-05-29 — todas as tabelas criadas com dados iniciais
 
 ---
 
@@ -249,6 +258,7 @@ emporio-do-japa-gourmet/
 ├── vercel.json                 ← configuração Vercel + PHP runtime
 ├── .gitignore
 ├── .env.example                ← modelo das variáveis de ambiente
+├── .env.local                  ← variáveis reais (não commitado)
 ├── .htaccess                   ← HTTPS, segurança, cache (Apache/Hostinger)
 │
 ├── api/
@@ -256,25 +266,24 @@ emporio-do-japa-gourmet/
 │   ├── categorias.php          ← GET → JSON com categorias
 │   ├── cidades.php             ← GET → JSON com cidades ativas
 │   ├── bairros.php             ← GET ?cidade_id=X → JSON com bairros + fretes
-│   └── pedido.php              ← POST → registra pedido no banco
-│
-├── emporio/
-│   ├── index.php               ← login
-│   ├── dashboard.php
-│   ├── produtos.php
-│   ├── categorias.php
-│   ├── kits.php
-│   ├── pedidos.php
-│   ├── importar.php
-│   ├── frete.php               ← gestão de cidades e bairros
-│   ├── setup.php               ← criação do primeiro admin
-│   ├── logout.php
-│   └── includes/
-│       ├── auth.php            ← sessão, CSRF, flash messages
-│       ├── db.php              ← PDO PostgreSQL (usa env vars)
-│       ├── helpers.php         ← h(), brl(), uploadImagem(), promoAtiva()…
-│       ├── head.php            ← layout: sidebar + topbar
-│       └── foot.php            ← fechamento do layout
+│   ├── pedido.php              ← POST → registra pedido no banco
+│   └── emporio/                ← painel admin (movido para cá em 2026-05-29)
+│       ├── index.php           ← login
+│       ├── dashboard.php
+│       ├── produtos.php
+│       ├── categorias.php
+│       ├── kits.php
+│       ├── pedidos.php
+│       ├── importar.php
+│       ├── frete.php           ← gestão de cidades e bairros
+│       ├── setup.php           ← criação do primeiro admin
+│       ├── logout.php
+│       └── includes/
+│           ├── auth.php        ← sessão, CSRF, flash messages
+│           ├── db.php          ← PDO PostgreSQL (usa env vars)
+│           ├── helpers.php     ← h(), brl(), uploadImagem(), promoAtiva()…
+│           ├── head.php        ← layout: sidebar + topbar
+│           └── foot.php        ← fechamento do layout
 │
 ├── assets/
 │   ├── css/
@@ -290,7 +299,7 @@ emporio-do-japa-gourmet/
 │
 └── database/
     ├── schema.sql              ← schema MySQL (referência / Hostinger)
-    └── schema-postgres.sql     ← schema PostgreSQL (Supabase)
+    └── schema-postgres.sql     ← schema PostgreSQL (Supabase — executado)
 ```
 
 ---
@@ -318,55 +327,33 @@ bairros          (id, cidade_id, nome, frete, ativo)
 
 ## Deploy — GitHub + Vercel + Supabase
 
-### 1. Supabase — criar o banco
+### Status atual (2026-05-29)
 
-1. Acesse **supabase.com** → seu projeto → **SQL Editor**
-2. Abra e execute `database/schema-postgres.sql`
-3. Acesse **Settings → Database → Connection string** e copie o host, porta, usuário
-
-### 2. GitHub — criar repositório
-
-```bash
-# No terminal, dentro da pasta do projeto:
-git init
-git add .
-git commit -m "Empório Japa Gourmet — commit inicial"
-
-# Crie um repo no github.com, depois:
-git remote add origin https://github.com/SEU_USUARIO/emporio-do-japa-gourmet.git
-git push -u origin main
-```
-
-### 3. Vercel — conectar e configurar
-
-1. Acesse **vercel.com** → **Add New Project**
-2. Importe o repositório do GitHub
-3. **Framework Preset:** Other
-4. **Root Directory:** deixe vazio (raiz)
-5. Clique em **Deploy** (vai falhar na primeira vez sem as variáveis — normal)
-6. Acesse **Settings → Environment Variables** e adicione:
-
-| Name | Value |
+| Etapa | Status |
 |---|---|
-| `DB_HOST` | host do Supabase |
-| `DB_PORT` | `5432` |
-| `DB_NAME` | `postgres` |
-| `DB_USER` | usuário Supabase |
-| `DB_PASS` | senha do banco |
+| Repositório GitHub | ✅ `github.com/n8nsushigourmet/emporio-do-japa-gourmet` |
+| Schema Supabase | ✅ Executado — 10 tabelas + dados iniciais |
+| Vercel — projeto | ⏳ Aguardando token da Vercel |
+| Vercel — env vars | ⏳ Aguardando deploy |
+| Primeiro usuário admin | ⏳ Após deploy: acessar `/emporio/setup.php` |
 
-7. Vá em **Deployments** → **Redeploy**
+### Próximos deploys (fluxo normal)
 
-### 4. Criar o primeiro usuário admin
+Com tudo configurado, o fluxo é totalmente automático:
+1. Faça alterações no código
+2. Claude Code faz `git push`
+3. Vercel detecta o push e deploya automaticamente
 
-Após o deploy, acesse:
+### Criar o primeiro usuário admin
+
+Após o primeiro deploy bem-sucedido, acesse:
 ```
 https://SEU_DOMINIO.vercel.app/emporio/setup.php
 ```
-Crie o usuário admin e depois acesse `/emporio/` para fazer login.
 
 ### Limitação de uploads no Vercel
 
-O Vercel é serverless — **arquivos enviados pelo admin não persistem entre deploys**. Para produção, a solução é integrar o upload ao **Supabase Storage** (buckets públicos) e salvar apenas a URL no banco. Por enquanto, as fotos dos produtos podem ser commitadas manualmente no repositório dentro de `uploads/produtos/`.
+O Vercel é serverless — **arquivos enviados pelo admin não persistem entre deploys**. Para produção, integrar o upload ao **Supabase Storage** e salvar apenas a URL no banco.
 
 ---
 
