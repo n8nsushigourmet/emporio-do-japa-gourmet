@@ -1,12 +1,11 @@
 /* Empório Japa Gourmet — Loja */
 
 const WHATSAPP = '5532999975892';
-const API_PRODUTOS   = 'api/produtos.php';
-const API_CATEGORIAS = 'api/categorias.php';
-const API_PEDIDO     = 'api/pedido.php';
-
-const API_CIDADES  = 'api/cidades.php';
-const API_BAIRROS  = 'api/bairros.php';
+const API_PRODUTOS   = '/api/produtos';
+const API_CATEGORIAS = '/api/categorias';
+const API_PEDIDO     = '/api/pedidos';
+const API_CIDADES    = '/api/cidades';
+const API_BAIRROS    = '/api/bairros';
 
 /* ── Estado global ── */
 const state = {
@@ -393,7 +392,7 @@ function adicionarAoCarrinho(produto, card, addBtn) {
   if (produto.tipo === 'variacao') {
     const sel = card.querySelector('.var-btn.selected');
     if (!sel) { sel = card.querySelector('.var-btn'); }
-    const varId = Number(sel?.dataset.varId);
+    const varId = sel?.dataset.varId;
     variacao = produto.variacoes.find(v => v.id === varId) || produto.variacoes[0];
     preco = variacao.preco;
   } else if (produto.promo) {
@@ -742,7 +741,7 @@ function iniciarEventos() {
 
   /* Cidade select */
   $('#select-cidade').addEventListener('change', async e => {
-    const cidadeId = Number(e.target.value);
+    const cidadeId = e.target.value;
     if (!cidadeId) {
       state.entrega.cidade = null;
       state.entrega.bairro = null;

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empório Japa — Painel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <style>
+    #modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 200;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 20px;
+      overflow-y: auto;
+    }
+    #modal-overlay.open { display: flex; }
+    .modal-dialog {
+      background: var(--bg-card);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-lg);
+      width: 100%; max-width: 620px;
+      padding: 28px;
+    }
+    .modal-header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .modal-title { font-size: 17px; font-weight: 600; }
+    #modal-body { max-height: 65vh; overflow-y: auto; padding-right: 4px; }
+    .modal-footer {
+      display: flex; justify-content: flex-end; gap: 8px;
+      margin-top: 20px; padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    @media (max-width: 767px) {
+      .sidebar { width: 100%; height: 56px; top: auto; bottom: 0; left: 0; right: 0; flex-direction: row; border-right: none; border-top: 1px solid var(--border); overflow: hidden; }
+      .sidebar-logo, .sidebar-footer, .nav-section { display: none; }
+      .sidebar-nav { display: flex; flex-direction: row; padding: 0; width: 100%; }
+      .nav-item { flex: 1; justify-content: center; padding: 8px 4px; flex-direction: column; gap: 2px; font-size: 10px; border-left: none; border-top: 3px solid transparent; }
+      .nav-item.active { border-left-color: transparent; border-top-color: var(--ambar); }
+      .main-area { margin-left: 0; padding-bottom: 56px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Login ─────────────────────────────────────────── -->
+<div id="login-page" class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">🍣</div>
+      <div>
+        <div class="login-title">Empório Japa Gourmet</div>
+        <div class="login-sub">Painel Administrativo</div>
+      </div>
+    </div>
+    <form class="login-form" id="login-form" autocomplete="on">
+      <div class="form-group">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+      <div id="login-error" class="flash flash-error" hidden></div>
+      <button type="submit" class="login-btn">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── App ───────────────────────────────────────────── -->
+<div id="app" class="layout" hidden>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🍣</div>
+      <div class="sidebar-logo-text">
+        <span class="sidebar-logo-name">Empório Japa</span>
+        <span class="sidebar-logo-sub">Admin</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Menu</div>
+      <button id="nav-dashboard"  class="nav-item" data-nav="dashboard">📊 Dashboard</button>
+      <button id="nav-produtos"   class="nav-item" data-nav="produtos">🛍️ Produtos</button>
+      <button id="nav-categorias" class="nav-item" data-nav="categorias">🗂️ Categorias</button>
+      <button id="nav-pedidos"    class="nav-item" data-nav="pedidos">📦 Pedidos</button>
+      <button id="nav-entregas"   class="nav-item" data-nav="entregas">🚚 Entregas</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a id="btn-logout" class="sidebar-logout" style="cursor:pointer">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M7 3H4a1 1 0 00-1 1v12a1 1 0 001 1h3M13 14l3-4-3-4M16 10H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sair
+      </a>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <span class="topbar-title" id="topbar-title">Dashboard</span>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </header>
+    <main class="content" id="content">
+      <div id="sec-dashboard" hidden></div>
+      <div id="sec-produtos"  hidden></div>
+      <div id="sec-categorias" hidden></div>
+      <div id="sec-pedidos"   hidden></div>
+      <div id="sec-entregas"  hidden></div>
+    </main>
+  </div>
+</div>
+
+<!-- ── Modal ─────────────────────────────────────────── -->
+<div id="modal-overlay">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3 id="modal-title" class="modal-title"></h3>
+      <button class="btn-icon" id="modal-x">✕</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+      <button class="btn btn-primary"   id="modal-btn-save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Estado global ─────────────────────────────────────
+let _token     = localStorage.getItem('ej_token') || '';
+let _cats      = null;
+let _prodCache = new Map();
+let _catCache  = new Map();
+let _cidadeAtiva     = null;
+let _cidadeAtivaNome = null;
+let _modalSaveFn  = null;
+let _modalVars    = [];
+let _editingProdId   = null;
+let _editingCatId    = null;
+let _editingCidadeId = null;
+let _editingBairroId = null;
+let _pedidoFiltro    = '';
+
+// ── Helpers ───────────────────────────────────────────
+function brl(v) {
+  return (v == null || v === '') ? '—' : 'R$ ' + Number(v).toFixed(2).replace('.', ',');
+}
+function dateStr(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short', timeZone:'America/Sao_Paulo' });
+}
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function slugify(s) {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').replace(/^-+|-+$/g,'');
+}
+
+// ── HTTP ──────────────────────────────────────────────
+async function http(method, url, data) {
+  const opts = { method, headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+_token } };
+  if (data !== undefined) opts.body = JSON.stringify(data);
+  let res;
+  try { res = await fetch(url, opts); } catch { showFlash('Sem conexão', 'error'); return null; }
+  if (res.status === 401) { doLogout(); return null; }
+  const text = await res.text();
+  if (!res.ok) {
+    let msg = text;
+    try { msg = JSON.parse(text).error || text; } catch {}
+    showFlash(msg || 'Erro', 'error');
+    return null;
+  }
+  if (!text) return {};
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+// ── Flash ─────────────────────────────────────────────
+function showFlash(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = 'flash flash-' + type;
+  el.textContent = msg;
+  const c = document.getElementById('content');
+  c.insertBefore(el, c.firstChild);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── Auth ──────────────────────────────────────────────
+function doLogout() {
+  localStorage.removeItem('ej_token');
+  _token = '';
+  document.getElementById('app').hidden = true;
+  document.getElementById('login-page').hidden = false;
+}
+
+// ── Modal ─────────────────────────────────────────────
+function openModal(title, html, onSave) {
+  _modalSaveFn = onSave;
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('modal-btn-save').disabled = false;
+  document.getElementById('modal-btn-save').textContent = 'Salvar';
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('modal-body').innerHTML = '';
+  _modalSaveFn = null; _modalVars = [];
+  _editingProdId = _editingCatId = _editingCidadeId = _editingBairroId = null;
+}
+
+// ── Navigation ────────────────────────────────────────
+const SECS   = ['dashboard','produtos','categorias','pedidos','entregas'];
+const TITLES = { dashboard:'Dashboard', produtos:'Produtos', categorias:'Categorias', pedidos:'Pedidos', entregas:'Zonas de Entrega' };
+
+function navigate(sec) {
+  SECS.forEach(s => {
+    document.getElementById('sec-'+s).hidden = true;
+    document.getElementById('nav-'+s).classList.remove('active');
+  });
+  document.getElementById('sec-'+sec).hidden = false;
+  document.getElementById('nav-'+sec).classList.add('active');
+  document.getElementById('topbar-title').textContent = TITLES[sec] || sec;
+  document.getElementById('topbar-actions').innerHTML = '';
+  ({ dashboard:loadDashboard, produtos:loadProdutos, categorias:loadCategorias, pedidos:loadPedidos, entregas:loadEntregas })[sec]?.();
+}
+
+// ── Dashboard ─────────────────────────────────────────
+async function loadDashboard() {
+  const sec = document.getElementById('sec-dashboard');
+  sec.innerHTML = '<div class="empty-msg"><span>⏳</span>Carregando…</div>';
+  const d = await http('GET', '/api/admin/dashboard');
+  if (!d) return;
+  sec.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-label">Pedidos Hoje</div><div class="stat-value">${d.pedidosHoje}</div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Faturamento Hoje</div><div class="stat-value" style="font-size:20px">${brl(d.totalHoje)}</div></div>
+      <div class="stat-card"><div class="stat-icon">🛍️</div><div class="stat-label">Produtos Ativos</div><div class="stat-value">${d.totalProdutos}</div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar"><strong style="font-size:14px;color:var(--text)">Pedidos Recentes</strong></div>
+      ${d.pedidosRecentes.length ? `
+        <table><thead><tr><th>#</th><th>Data</th><th>Entrega</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody>${d.pedidosRecentes.map(p => `
+          <tr>
+            <td class="text-dim" style="font-size:12px">${String(p.id).slice(0,8)}</td>
+            <td style="white-space:nowrap">${dateStr(p.criado_em)}</td>
+            <td>${p.tipo_entrega === 'retirada' ? '🏠 Retirada' : '🚚 '+esc(p.cidade||'Entrega')}</td>
+            <td><strong>${brl(p.total)}</strong></td>
+            <td>${statusBadge(p.status)}</td>
+          </tr>`).join('')}
+        </tbody></table>
+      ` : '<div class="empty-msg"><span>📭</span>Nenhum pedido ainda.</div>'}
+    </div>`;
+}
+
+function statusBadge(s) {
+  const cls = { novo:'badge-novo', em_preparo:'badge-preparo', pronto:'badge-pronto', entregue:'badge-entregue' };
+  const lbl = { novo:'Novo', em_preparo:'Em preparo', pronto:'Pronto', entregue:'Entregue' };
+  return `<span class="badge ${cls[s]||''}">${lbl[s]||s}</span>`;
+}
+
+// ── Produtos ──────────────────────────────────────────
+async function loadProdutos() {
+  document.getElementById('topbar-actions').innerHTML =
+    `<button class="btn btn-primary btn-sm" onclick="openProdutoModal()">+ Novo produto</button>`;
+
+  if (!_cats) _cats = await http('GET', '/api/admin/categorias') || [];
+  _cats.forEach(c => _catCache.set(String(c.id), c));
+
+  const prods = await http('GET', '/api/admin/produtos') || [];
+  _prodCache.clear();
+  prods.forEach(p => _prodCache.set(String(p.id), p));
+
+  const sec = document.getElementById('sec-produtos');
+  if (!prods.length) {
+    sec.innerHTML = '<div class="empty-msg"><span>🛍️</span>Nenhum produto cadastrado.</div>'; return;
+  }
+  sec.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <input type="search" placeholder="Buscar produto…" oninput="filtrarProdutos(this.value)" style="height:36px;min-width:220px;">
+      </div>
+      <table><thead><tr><th>Produto</th><th>Categoria</th><th>Tipo</th><th>Preço</th><th>Status</th><th></th></tr></thead>
+      <tbody id="prod-tbody">${prods.map(prodRow).join('')}</tbody></table>
+    </div>`;
+}
+
+function prodRow(p) {
+  const preco = p.tipo === 'variacao'
+    ? (p.variacoes?.length ? 'de ' + brl(Math.min(...p.variacoes.map(v => v.preco))) : '—')
+    : brl(p.promo && p.preco_promo ? p.preco_promo : p.preco);
+  const img = p.foto
+    ? `<img src="${esc(p.foto)}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;">`
+    : `<div style="width:36px;height:36px;border-radius:6px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🍱</div>`;
+  return `
+    <tr>
+      <td><div style="display:flex;align-items:center;gap:10px;">${img}<div>
+        <div style="font-weight:500">${esc(p.nome)}</div>
+        ${p.descricao ? `<div class="text-dim" style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.descricao)}</div>` : ''}
+      </div></div></td>
+      <td class="text-dim">${esc(p.categoria_nome||'—')}</td>
+      <td class="text-dim">${p.tipo === 'variacao' ? 'Variação' : 'Simples'}</td>
+      <td>${preco}</td>
+      <td>
+        ${p.ativo ? '<span class="badge badge-ativo">Ativo</span>' : '<span class="badge badge-inativo">Inativo</span>'}
+        ${p.destaque ? ' <span class="badge badge-preparo">⭐</span>' : ''}
+        ${p.promo    ? ' <span class="badge badge-promo">Promo</span>' : ''}
+      </td>
+      <td><div class="td-actions">
+        <button class="btn-icon" title="Editar" onclick="editProduto('${p.id}')">✏️</button>
+        <button class="btn-icon danger" title="Excluir" onclick="deleteProduto('${p.id}','${esc(p.nome)}')">🗑️</button>
+      </div></td>
+    </tr>`;
+}
+
+function filtrarProdutos(q) {
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  document.querySelectorAll('#prod-tbody tr').forEach(tr => {
+    tr.hidden = !!q && !norm(tr.textContent).includes(norm(q));
+  });
+}
+
+function editProduto(id) { openProdutoModal(_prodCache.get(String(id))); }
+
+function openProdutoModal(p = null) {
+  _editingProdId = p ? String(p.id) : null;
+  _modalVars = p?.variacoes ? JSON.parse(JSON.stringify(p.variacoes)) : [];
+  const catOpts = (_cats||[]).map(c =>
+    `<option value="${c.id}" ${String(p?.categoria_id) === String(c.id) ? 'selected' : ''}>${esc(c.nome)}</option>`
+  ).join('');
+  const isVar = p?.tipo === 'variacao';
+
+  openModal(p ? 'Editar Produto' : 'Novo Produto', `
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>Nome *</label>
+        <input type="text" id="pf-nome" value="${esc(p?.nome)}" placeholder="Ex: Salmão Fresco">
+      </div>
+      <div class="form-group form-full">
+        <label>Descrição</label>
+        <textarea id="pf-desc" style="min-height:70px">${esc(p?.descricao)}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="pf-cat"><option value="">Sem categoria</option>${catOpts}</select>
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="pf-tipo" onchange="pfTipoChange()">
+          <option value="simples"  ${!isVar ? 'selected':''}>Simples (preço único)</option>
+          <option value="variacao" ${isVar  ? 'selected':''}>Variação (tamanhos/pesos)</option>
+        </select>
+      </div>
+      <div id="pf-preco-w" class="form-group" ${isVar ? 'hidden':''}>
+        <label>Preço (R$)</label>
+        <input type="number" id="pf-preco" value="${p?.preco??''}" step="0.01" min="0" placeholder="0,00">
+      </div>
+      <div class="form-group">
+        <label>Foto (URL)</label>
+        <input type="text" id="pf-foto" value="${esc(p?.foto)}" placeholder="https://…">
+      </div>
+      <div id="pf-vars-w" class="form-full" ${!isVar ? 'hidden':''}>
+        <label style="display:block;margin-bottom:8px">Variações</label>
+        <div id="pf-vars-list" class="variations-list"></div>
+        <button type="button" class="btn btn-secondary btn-sm mt-16" onclick="pfAddVar()">+ Adicionar variação</button>
+      </div>
+      <div class="toggle-row form-full">
+        <div><div class="toggle-label">Produto ativo</div><div class="toggle-sub">Visível na loja</div></div>
+        <label class="toggle"><input type="checkbox" id="pf-ativo" ${p?.ativo !== false ? 'checked':''}><div class="toggle-track"></div></label>
+      </div>
+      <div class="toggle-row form-full">
+        <div><div class="toggle-label">Destaque</div><div class="toggle-sub">Exibido na seção de destaques</div></div>
+        <label class="toggle"><input type="checkbox" id="pf-destaque" ${p?.destaque ? 'checked':''}><div class="toggle-track"></div></label>
+      </div>
+      <div class="toggle-row form-full">
+        <div><div class="toggle-label">Em promoção</div><div class="toggle-sub">Exibe preço especial e badge</div></div>
+        <label class="toggle"><input type="checkbox" id="pf-promo" ${p?.promo ? 'checked':''} onchange="pfPromoChange()"><div class="toggle-track"></div></label>
+      </div>
+      <div id="pf-promo-w" class="form-grid form-full" style="gap:12px" ${!p?.promo ? 'hidden':''}>
+        <div class="form-group">
+          <label>Preço original (R$)</label>
+          <input type="number" id="pf-preco-orig"  value="${p?.preco_original??''}" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label>Preço promo (R$)</label>
+          <input type="number" id="pf-preco-promo" value="${p?.preco_promo??''}" step="0.01" min="0">
+        </div>
+      </div>
+    </div>`, saveProduto);
+
+  pfRenderVars();
+}
+
+function pfTipoChange() {
+  const isVar = document.getElementById('pf-tipo').value === 'variacao';
+  document.getElementById('pf-preco-w').hidden = isVar;
+  document.getElementById('pf-vars-w').hidden = !isVar;
+}
+function pfPromoChange() {
+  document.getElementById('pf-promo-w').hidden = !document.getElementById('pf-promo').checked;
+}
+function pfRenderVars() {
+  const list = document.getElementById('pf-vars-list');
+  if (!list) return;
+  list.innerHTML = _modalVars.length
+    ? _modalVars.map((v,i) => `
+        <div class="var-row">
+          <input type="text"   value="${esc(v.rotulo)}" placeholder="Rótulo (ex: 100g)" oninput="_modalVars[${i}].rotulo=this.value">
+          <input type="number" value="${v.preco??''}" placeholder="Preço" step="0.01" min="0" oninput="_modalVars[${i}].preco=parseFloat(this.value)||0">
+          <button type="button" class="btn-icon danger" onclick="pfRemoveVar(${i})">✕</button>
+        </div>`).join('')
+    : '<div class="text-dim" style="font-size:13px;padding:6px 0">Clique em + para adicionar variações.</div>';
+}
+function pfAddVar()     { _modalVars.push({rotulo:'',preco:0}); pfRenderVars(); }
+function pfRemoveVar(i) { _modalVars.splice(i,1); pfRenderVars(); }
+
+async function saveProduto() {
+  const nome = document.getElementById('pf-nome').value.trim();
+  if (!nome) { showFlash('Nome é obrigatório','error'); return; }
+  const tipo = document.getElementById('pf-tipo').value;
+  const body = {
+    nome,
+    descricao:   document.getElementById('pf-desc').value.trim() || null,
+    foto:        document.getElementById('pf-foto').value.trim() || null,
+    tipo,
+    categoria_id: document.getElementById('pf-cat').value || null,
+    ativo:       document.getElementById('pf-ativo').checked,
+    destaque:    document.getElementById('pf-destaque').checked,
+    promo:       document.getElementById('pf-promo').checked,
+  };
+  if (tipo === 'simples') {
+    body.preco = parseFloat(document.getElementById('pf-preco').value) || null;
+  } else {
+    body.variacoes = _modalVars.filter(v => v.rotulo.trim());
+  }
+  if (body.promo) {
+    body.preco_original = parseFloat(document.getElementById('pf-preco-orig').value) || null;
+    body.preco_promo    = parseFloat(document.getElementById('pf-preco-promo').value) || null;
+  }
+  const btn = document.getElementById('modal-btn-save');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  const ok = _editingProdId
+    ? await http('PUT', `/api/admin/produtos?id=${_editingProdId}`, body)
+    : await http('POST', '/api/admin/produtos', body);
+  btn.disabled = false; btn.textContent = 'Salvar';
+  if (ok !== null) { closeModal(); showFlash(_editingProdId ? 'Produto atualizado!' : 'Produto criado!'); loadProdutos(); }
+}
+
+async function deleteProduto(id, nome) {
+  if (!confirm(`Excluir "${nome}"? Esta ação não pode ser desfeita.`)) return;
+  const ok = await http('DELETE', `/api/admin/produtos?id=${id}`);
+  if (ok !== null) { showFlash('Produto excluído.'); loadProdutos(); }
+}
+
+// ── Categorias ────────────────────────────────────────
+async function loadCategorias() {
+  document.getElementById('topbar-actions').innerHTML =
+    `<button class="btn btn-primary btn-sm" onclick="openCatModal()">+ Nova categoria</button>`;
+  const cats = await http('GET', '/api/admin/categorias') || [];
+  _catCache.clear(); _cats = cats;
+  cats.forEach(c => _catCache.set(String(c.id), c));
+  const sec = document.getElementById('sec-categorias');
+  if (!cats.length) { sec.innerHTML = '<div class="empty-msg"><span>🗂️</span>Nenhuma categoria.</div>'; return; }
+  sec.innerHTML = `
+    <div class="table-wrap">
+      <table><thead><tr><th>Nome</th><th>Slug</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
+      <tbody>${cats.map(c => `
+        <tr>
+          <td><strong>${esc(c.nome)}</strong></td>
+          <td class="text-dim"><code style="font-size:12px">${esc(c.slug)}</code></td>
+          <td class="text-dim">${c.ordem}</td>
+          <td>${c.ativo ? '<span class="badge badge-ativo">Ativa</span>' : '<span class="badge badge-inativo">Inativa</span>'}</td>
+          <td><div class="td-actions">
+            <button class="btn-icon" onclick="editCat('${c.id}')">✏️</button>
+            <button class="btn-icon danger" onclick="deleteCat('${c.id}','${esc(c.nome)}')">🗑️</button>
+          </div></td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>`;
+}
+
+function editCat(id) { openCatModal(_catCache.get(String(id))); }
+
+function openCatModal(c = null) {
+  _editingCatId = c ? String(c.id) : null;
+  openModal(c ? 'Editar Categoria' : 'Nova Categoria', `
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>Nome *</label>
+        <input type="text" id="cf-nome" value="${esc(c?.nome)}" placeholder="Ex: Peixes" oninput="cfAutoSlug()">
+      </div>
+      <div class="form-group form-full">
+        <label>Slug <span class="form-hint">(identificador único)</span></label>
+        <input type="text" id="cf-slug" value="${esc(c?.slug)}" placeholder="peixes-e-frutos-do-mar">
+      </div>
+      <div class="form-group">
+        <label>Ordem</label>
+        <input type="number" id="cf-ordem" value="${c?.ordem??0}" min="0">
+      </div>
+      <div class="toggle-row form-full">
+        <div><div class="toggle-label">Ativa</div></div>
+        <label class="toggle"><input type="checkbox" id="cf-ativo" ${c?.ativo !== false ? 'checked':''}><div class="toggle-track"></div></label>
+      </div>
+    </div>`, saveCat);
+}
+function cfAutoSlug() {
+  const s = slugify(document.getElementById('cf-nome').value);
+  document.getElementById('cf-slug').value = s;
+}
+async function saveCat() {
+  const nome = document.getElementById('cf-nome').value.trim();
+  const slug = document.getElementById('cf-slug').value.trim();
+  if (!nome || !slug) { showFlash('Nome e slug são obrigatórios','error'); return; }
+  const body = { nome, slug, ordem: parseInt(document.getElementById('cf-ordem').value)||0, ativo: document.getElementById('cf-ativo').checked };
+  const btn = document.getElementById('modal-btn-save');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  const ok = _editingCatId
+    ? await http('PUT', `/api/admin/categorias?id=${_editingCatId}`, body)
+    : await http('POST', '/api/admin/categorias', body);
+  btn.disabled = false; btn.textContent = 'Salvar';
+  if (ok !== null) { closeModal(); showFlash(_editingCatId ? 'Categoria atualizada!' : 'Categoria criada!'); loadCategorias(); }
+}
+async function deleteCat(id, nome) {
+  if (!confirm(`Excluir categoria "${nome}"?`)) return;
+  const ok = await http('DELETE', `/api/admin/categorias?id=${id}`);
+  if (ok !== null) { showFlash('Categoria excluída.'); loadCategorias(); }
+}
+
+// ── Pedidos ───────────────────────────────────────────
+async function loadPedidos() {
+  const url = _pedidoFiltro ? `/api/admin/pedidos?status=${_pedidoFiltro}` : '/api/admin/pedidos';
+  const pedidos = await http('GET', url) || [];
+  const sec = document.getElementById('sec-pedidos');
+  sec.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <select onchange="_pedidoFiltro=this.value;loadPedidos()" style="height:36px;">
+          <option value="" ${!_pedidoFiltro?'selected':''}>Todos os status</option>
+          <option value="novo"       ${_pedidoFiltro==='novo'?'selected':''}>Novo</option>
+          <option value="em_preparo" ${_pedidoFiltro==='em_preparo'?'selected':''}>Em preparo</option>
+          <option value="pronto"     ${_pedidoFiltro==='pronto'?'selected':''}>Pronto</option>
+          <option value="entregue"   ${_pedidoFiltro==='entregue'?'selected':''}>Entregue</option>
+        </select>
+      </div>
+      ${pedidos.length ? `
+        <table><thead><tr><th>#</th><th>Data</th><th>Entrega</th><th>Destino</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <tbody>${pedidos.map(pedRow).join('')}</tbody></table>
+      ` : '<div class="empty-msg"><span>📭</span>Nenhum pedido.</div>'}
+    </div>`;
+}
+
+function pedRow(p) {
+  const dest = p.tipo_entrega === 'retirada' ? 'Loja' : (p.bairro ? `${esc(p.bairro)}, ${esc(p.cidade)}` : esc(p.cidade)||'—');
+  const stClass = { novo:'badge-novo', em_preparo:'badge-preparo', pronto:'badge-pronto', entregue:'badge-entregue' }[p.status]||'';
+  return `
+    <tr id="prow-${p.id}">
+      <td class="text-dim" style="font-size:12px">${String(p.id).slice(0,8)}</td>
+      <td style="white-space:nowrap">${dateStr(p.criado_em)}</td>
+      <td>${p.tipo_entrega === 'retirada' ? '🏠' : '🚚'}</td>
+      <td class="text-dim">${dest}</td>
+      <td><strong>${brl(p.total)}</strong></td>
+      <td>
+        <select class="badge ${stClass}" style="background:transparent;border:none;font-size:11.5px;font-weight:600;color:inherit;cursor:pointer;"
+          onchange="updateStatus('${p.id}', this)">
+          <option value="novo"       ${p.status==='novo'?'selected':''}>Novo</option>
+          <option value="em_preparo" ${p.status==='em_preparo'?'selected':''}>Em preparo</option>
+          <option value="pronto"     ${p.status==='pronto'?'selected':''}>Pronto</option>
+          <option value="entregue"   ${p.status==='entregue'?'selected':''}>Entregue</option>
+        </select>
+      </td>
+      <td><button class="btn-icon" title="Ver itens" onclick="togglePedItens('${p.id}')">👁️</button></td>
+    </tr>
+    <tr id="prow-items-${p.id}" hidden>
+      <td colspan="7" style="background:var(--bg);padding:0;">
+        <div id="pitems-${p.id}" style="padding:12px 20px;"></div>
+      </td>
+    </tr>`;
+}
+
+async function updateStatus(id, sel) {
+  const status = sel.value;
+  const ok = await http('PUT', `/api/admin/pedidos?id=${id}`, { status });
+  if (ok !== null) {
+    showFlash('Status atualizado!');
+    const stClass = { novo:'badge-novo', em_preparo:'badge-preparo', pronto:'badge-pronto', entregue:'badge-entregue' };
+    sel.className = 'badge ' + (stClass[status]||'');
+  }
+}
+
+async function togglePedItens(id) {
+  const row = document.getElementById(`prow-items-${id}`);
+  if (!row.hidden) { row.hidden = true; return; }
+  const div = document.getElementById(`pitems-${id}`);
+  div.innerHTML = '<span class="text-dim">Carregando…</span>';
+  row.hidden = false;
+  const data = await http('GET', `/api/admin/pedidos?id=${id}`);
+  if (!data?.itens?.length) { div.innerHTML = '<span class="text-dim">Sem itens.</span>'; return; }
+  div.innerHTML = `
+    <table style="font-size:13px;"><thead><tr><th>Produto</th><th>Variação</th><th>Preço</th><th>Qtd</th><th>Total</th></tr></thead>
+    <tbody>${data.itens.map(i => `
+      <tr>
+        <td>${esc(i.nome)}</td>
+        <td class="text-dim">${esc(i.variacao_label)||'—'}</td>
+        <td>${brl(i.preco)}</td><td>${i.quantidade}</td>
+        <td><strong>${brl(i.preco * i.quantidade)}</strong></td>
+      </tr>`).join('')}</tbody></table>`;
+}
+
+// ── Entregas ──────────────────────────────────────────
+async function loadEntregas() {
+  document.getElementById('topbar-actions').innerHTML =
+    `<button class="btn btn-primary btn-sm" onclick="openCidadeModal()">+ Nova cidade</button>`;
+  const cidades = await http('GET', '/api/admin/cidades') || [];
+  const sec = document.getElementById('sec-entregas');
+  sec.innerHTML = `
+    <div style="display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start;">
+      <div class="table-wrap">
+        <div class="table-toolbar"><strong style="font-size:13px;color:var(--text)">Cidades</strong></div>
+        <div id="cidades-list">${cidades.map(cidadeItem).join('')||'<div class="empty-msg" style="padding:20px"><span>🏙️</span>Nenhuma cidade.</div>'}</div>
+      </div>
+      <div id="bairros-panel"><div class="empty-msg"><span>👈</span>Selecione uma cidade.</div></div>
+    </div>`;
+}
+
+function cidadeItem(c) {
+  return `
+    <div id="ci-${c.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onclick="selectCidade('${c.id}','${esc(c.nome)}')">
+      <span style="font-size:13.5px;font-weight:500;">${esc(c.nome)}</span>
+      <div style="display:flex;gap:4px;" onclick="event.stopPropagation()">
+        <button class="btn-icon" onclick="openCidadeModal({id:'${c.id}',nome:'${esc(c.nome)}',ativo:${c.ativo}})">✏️</button>
+        <button class="btn-icon danger" onclick="deleteCidade('${c.id}','${esc(c.nome)}')">🗑️</button>
+      </div>
+    </div>`;
+}
+
+function openCidadeModal(c = null) {
+  _editingCidadeId = c ? String(c.id) : null;
+  openModal(c ? 'Editar Cidade' : 'Nova Cidade', `
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>Nome da cidade *</label>
+        <input type="text" id="cif-nome" value="${esc(c?.nome)}" placeholder="Ex: Carangola">
+      </div>
+      ${c ? `<div class="toggle-row form-full"><div><div class="toggle-label">Ativa</div></div>
+        <label class="toggle"><input type="checkbox" id="cif-ativo" ${c.ativo !== false ? 'checked':''}><div class="toggle-track"></div></label></div>` : ''}
+    </div>`, saveCidade);
+}
+async function saveCidade() {
+  const nome = document.getElementById('cif-nome').value.trim();
+  if (!nome) { showFlash('Nome é obrigatório','error'); return; }
+  const ativo = document.getElementById('cif-ativo')?.checked ?? true;
+  const btn = document.getElementById('modal-btn-save');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  const ok = _editingCidadeId
+    ? await http('PUT', `/api/admin/cidades?id=${_editingCidadeId}`, { nome, ativo })
+    : await http('POST', '/api/admin/cidades', { nome });
+  btn.disabled = false; btn.textContent = 'Salvar';
+  if (ok !== null) { closeModal(); showFlash(_editingCidadeId ? 'Cidade atualizada!' : 'Cidade criada!'); loadEntregas(); }
+}
+async function deleteCidade(id, nome) {
+  if (!confirm(`Excluir "${nome}"? Os bairros vinculados serão removidos.`)) return;
+  const ok = await http('DELETE', `/api/admin/cidades?id=${id}`);
+  if (ok !== null) { showFlash('Cidade excluída.'); loadEntregas(); }
+}
+
+async function selectCidade(id, nome) {
+  _cidadeAtiva = id; _cidadeAtivaNome = nome;
+  document.querySelectorAll('[id^="ci-"]').forEach(el => {
+    el.style.background = el.id === `ci-${id}` ? 'var(--ambar-bg)' : '';
+  });
+  const panel = document.getElementById('bairros-panel');
+  panel.innerHTML = '<div class="empty-msg"><span>⏳</span>Carregando…</div>';
+  const bairros = await http('GET', `/api/admin/bairros?cidade_id=${id}`) || [];
+  panel.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar" style="justify-content:space-between;">
+        <strong style="font-size:13px;color:var(--text)">Bairros — ${esc(nome)}</strong>
+        <button class="btn btn-secondary btn-sm" onclick="openBairroModal(null,'${id}','${esc(nome)}')">+ Bairro</button>
+      </div>
+      ${bairros.length ? `
+        <table><thead><tr><th>Bairro</th><th>Frete</th><th></th></tr></thead>
+        <tbody>${bairros.map(b => `
+          <tr>
+            <td><strong>${esc(b.nome)}</strong></td>
+            <td class="text-ambar">${brl(b.frete)}</td>
+            <td><div class="td-actions">
+              <button class="btn-icon" onclick="openBairroModal({id:'${b.id}',nome:'${esc(b.nome)}',frete:${b.frete}},'${id}','${esc(nome)}')">✏️</button>
+              <button class="btn-icon danger" onclick="deleteBairro('${b.id}','${esc(b.nome)}','${id}','${esc(nome)}')">🗑️</button>
+            </div></td>
+          </tr>`).join('')}
+        </tbody></table>
+      ` : '<div class="empty-msg" style="padding:24px"><span>📍</span>Nenhum bairro.</div>'}
+    </div>`;
+}
+
+function openBairroModal(b = null, cidadeId, cidadeNome) {
+  _editingBairroId = b ? String(b.id) : null;
+  openModal(b ? 'Editar Bairro' : `Novo Bairro — ${cidadeNome}`, `
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>Nome do bairro *</label>
+        <input type="text" id="bf-nome" value="${esc(b?.nome)}" placeholder="Ex: Centro">
+      </div>
+      <div class="form-group form-full">
+        <label>Frete (R$) *</label>
+        <input type="number" id="bf-frete" value="${b?.frete??''}" step="0.50" min="0" placeholder="7,00">
+      </div>
+    </div>`, () => saveBairro(cidadeId, cidadeNome));
+}
+async function saveBairro(cidadeId, cidadeNome) {
+  const nome  = document.getElementById('bf-nome').value.trim();
+  const frete = parseFloat(document.getElementById('bf-frete').value);
+  if (!nome || isNaN(frete)) { showFlash('Nome e frete são obrigatórios','error'); return; }
+  const btn = document.getElementById('modal-btn-save');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  const ok = _editingBairroId
+    ? await http('PUT',  `/api/admin/bairros?id=${_editingBairroId}`, { nome, frete, ativo: true })
+    : await http('POST', '/api/admin/bairros', { cidade_id: cidadeId, nome, frete });
+  btn.disabled = false; btn.textContent = 'Salvar';
+  if (ok !== null) { closeModal(); showFlash(_editingBairroId ? 'Bairro atualizado!' : 'Bairro criado!'); selectCidade(cidadeId, cidadeNome); }
+}
+async function deleteBairro(id, nome, cidadeId, cidadeNome) {
+  if (!confirm(`Excluir bairro "${nome}"?`)) return;
+  const ok = await http('DELETE', `/api/admin/bairros?id=${id}`);
+  if (ok !== null) { showFlash('Bairro excluído.'); selectCidade(cidadeId, cidadeNome); }
+}
+
+// ── Boot ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('modal-btn-save').addEventListener('click', () => _modalSaveFn?.());
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-x').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+  document.getElementById('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const senha = document.getElementById('senha').value;
+    const errEl = document.getElementById('login-error');
+    errEl.hidden = true;
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senha }),
+      });
+      if (!res.ok) { errEl.textContent = 'Senha incorreta.'; errEl.hidden = false; return; }
+      const data = await res.json();
+      _token = data.token;
+      localStorage.setItem('ej_token', _token);
+    } catch { errEl.textContent = 'Erro de conexão.'; errEl.hidden = false; return; }
+    document.getElementById('login-page').hidden = true;
+    document.getElementById('app').hidden = false;
+    navigate('dashboard');
+  });
+
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    if (confirm('Sair do painel?')) doLogout();
+  });
+
+  document.querySelectorAll('[data-nav]').forEach(el => {
+    el.addEventListener('click', () => navigate(el.dataset.nav));
+  });
+
+  if (_token) {
+    document.getElementById('login-page').hidden = true;
+    document.getElementById('app').hidden = false;
+    navigate('dashboard');
+  }
+});
+</script>
+</body>
+</html>

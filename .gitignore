@@ -3,6 +3,11 @@
 .env.local
 .env.production.local
 
+# Node
+node_modules/
+*.log
+.vercel/
+
 # Fotos de produtos geradas pelo admin (upload)
 uploads/produtos/*.webp
 uploads/produtos/*.jpg
