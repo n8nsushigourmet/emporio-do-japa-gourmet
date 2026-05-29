@@ -160,61 +160,113 @@ a { color: inherit; text-decoration: none; }
 /* ── Hero ── */
 .hero {
   position: relative;
-  height: 320px;
+  height: 400px;
   display: flex;
-  align-items: flex-end;
-  padding-bottom: 36px;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
 }
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #3a1a08 0%, #6B4226 50%, #4A2C18 100%);
+  background: #1A1209;
+}
+.hero-bg::before {
+  content: '';
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(107,66,38,.4) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  border: 1px solid rgba(212,160,72,.1);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(26,18,9,.85) 0%, rgba(26,18,9,.3) 60%, transparent 100%);
+  background: linear-gradient(to bottom, rgba(26,18,9,.35) 0%, transparent 40%, rgba(26,18,9,.35) 100%);
 }
 .hero-content {
   position: relative;
   z-index: 1;
-  max-width: 1280px;
-  width: 100%;
-  margin: 0 auto;
+  text-align: center;
   padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.hero-logo {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(212,160,72,.45);
+  margin-bottom: 14px;
 }
 .hero-eyebrow {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: .1em;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--ambar-claro);
   margin-bottom: 6px;
 }
 .hero-title {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: clamp(36px, 6vw, 52px);
+  font-size: clamp(32px, 6vw, 48px);
   font-style: italic;
   font-weight: 400;
   color: #fff;
-  line-height: 1.05;
-  margin-bottom: 16px;
+  line-height: 1.0;
+  margin-bottom: 2px;
 }
 .hero-title em { font-style: italic; }
-.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.hero-title-accent {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(13px, 2vw, 15px);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ambar-claro);
+  display: block;
+}
+.hero-divider {
+  width: 36px;
+  height: 1px;
+  background: rgba(212,160,72,.35);
+  margin: 12px auto;
+}
+.hero-url {
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: rgba(255,255,255,.35);
+  margin-bottom: 14px;
+}
+.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .hero-tag {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 5px 12px;
   border-radius: 99px;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(212,160,72,.12);
+  border: 1px solid rgba(212,160,72,.28);
   color: rgba(255,255,255,.85);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
-  backdrop-filter: blur(6px);
 }
 .hero-tag svg { width: 13px; height: 13px; flex-shrink: 0; }
 
@@ -812,6 +864,9 @@ a { color: inherit; text-decoration: none; }
 /* ── Mobile tweaks ── */
 @media (max-width: 480px) {
   .logo-text { display: none; }
-  .hero { height: 260px; }
-  .hero-title { font-size: 34px; }
+  .hero { height: 340px; }
+  .hero-logo { width: 70px; height: 70px; }
+  .hero-title { font-size: 30px; }
+  .hero-bg::before { width: 280px; height: 280px; }
+  .hero-bg::after { width: 400px; height: 400px; }
 }
