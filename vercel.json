@@ -1,10 +1,10 @@
 {
   "functions": {
-    "api/*.php":      { "runtime": "vercel-php@0.7.2" },
-    "emporio/*.php":  { "runtime": "vercel-php@0.7.2" }
+    "api/**/*.php": { "runtime": "vercel-php@0.7.2" }
   },
   "rewrites": [
-    { "source": "/emporio",  "destination": "/emporio/index.php" },
-    { "source": "/emporio/", "destination": "/emporio/index.php" }
+    { "source": "/emporio",        "destination": "/api/emporio/index.php" },
+    { "source": "/emporio/",       "destination": "/api/emporio/index.php" },
+    { "source": "/emporio/:path*", "destination": "/api/emporio/:path*" }
   ]
 }
