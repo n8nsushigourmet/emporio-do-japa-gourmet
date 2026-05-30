@@ -465,7 +465,7 @@ function pfUploadFoto(input) {
   fname.textContent = '';
 
   const xhr = new XMLHttpRequest();
-  xhr.open('POST', `/api/admin/upload?filename=${encodeURIComponent(file.name)}&mimetype=${encodeURIComponent(file.type)}`);
+  xhr.open('POST', `/api/admin/produtos?action=upload&filename=${encodeURIComponent(file.name)}&mimetype=${encodeURIComponent(file.type)}`);
   xhr.setRequestHeader('Authorization', 'Bearer ' + _token);
   xhr.setRequestHeader('Content-Type', 'application/octet-stream');
 
