@@ -1,34 +1,40 @@
-const pool = require('./_db');
+const supabase = require('./_db')
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).end();
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  if (req.method === 'OPTIONS') return res.status(200).end()
+  if (req.method !== 'POST') return res.status(405).end()
 
-  const { tipo_entrega, cidade, bairro, subtotal, frete, total, whatsapp_msg, itens } = req.body;
+  const { tipo_entrega, cidade, bairro, subtotal, frete, total, whatsapp_msg, itens } = req.body
 
   try {
-    const { rows: [pedido] } = await pool.query(
-      `INSERT INTO pedidos (tipo_entrega, cidade, bairro, subtotal, frete, total, whatsapp_msg)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [tipo_entrega, cidade || null, bairro || null, subtotal, frete, total, whatsapp_msg]
-    );
+    const { data: pedido, error: ePedido } = await supabase
+      .from('pedidos')
+      .insert({ tipo_entrega, cidade: cidade || null, bairro: bairro || null, subtotal, frete, total, whatsapp_msg })
+      .select('id')
+      .single()
+
+    if (ePedido) throw ePedido
 
     if (Array.isArray(itens) && itens.length) {
-      for (const item of itens) {
-        await pool.query(
-          `INSERT INTO pedido_itens (pedido_id, produto_id, nome, variacao_label, preco, quantidade)
-           VALUES ($1,$2,$3,$4,$5,$6)`,
-          [pedido.id, item.produto_id, item.nome, item.variacao_label || null, item.preco, item.quantidade]
-        );
-      }
+      const { error: eItens } = await supabase.from('pedido_itens').insert(
+        itens.map(item => ({
+          pedido_id: pedido.id,
+          produto_id: item.produto_id,
+          nome: item.nome,
+          variacao_label: item.variacao_label || null,
+          preco: item.preco,
+          quantidade: item.quantidade
+        }))
+      )
+      if (eItens) throw eItens
     }
 
-    res.json({ ok: true, id: pedido.id });
+    res.json({ ok: true, id: pedido.id })
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao registrar pedido' });
+    console.error(err)
+    res.status(500).json({ error: 'Erro ao registrar pedido' })
   }
-};
+}

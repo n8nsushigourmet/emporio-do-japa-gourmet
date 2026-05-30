@@ -1,39 +1,54 @@
-const pool = require('../_db');
-const checkAuth = require('./_auth');
+const supabase = require('../_db')
+const checkAuth = require('./_auth')
 
 function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
 }
 
 module.exports = async (req, res) => {
-  cors(res);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (!checkAuth(req)) return res.status(401).json({ error: 'Não autorizado' });
+  cors(res)
+  if (req.method === 'OPTIONS') return res.status(200).end()
+  if (!checkAuth(req)) return res.status(401).json({ error: 'Não autorizado' })
 
   try {
     if (req.method === 'GET') {
-      const { rows } = await pool.query(`SELECT * FROM cidades ORDER BY nome`);
-      return res.json(rows);
+      const { data, error } = await supabase.from('cidades').select('*').order('nome')
+      if (error) throw error
+      return res.json(data || [])
     }
+
     if (req.method === 'POST') {
-      const { nome } = req.body;
-      const { rows: [c] } = await pool.query(`INSERT INTO cidades (nome) VALUES ($1) RETURNING *`, [nome]);
-      return res.status(201).json(c);
+      const { nome } = req.body
+      const { data: c, error } = await supabase
+        .from('cidades')
+        .insert({ nome })
+        .select()
+        .single()
+      if (error) throw error
+      return res.status(201).json(c)
     }
+
     if (req.method === 'PUT') {
-      const { nome, ativo } = req.body;
-      await pool.query(`UPDATE cidades SET nome=$1, ativo=$2 WHERE id=$3`, [nome, ativo!==false, req.query.id]);
-      return res.json({ ok: true });
+      const { nome, ativo } = req.body
+      const { error } = await supabase
+        .from('cidades')
+        .update({ nome, ativo: ativo !== false })
+        .eq('id', req.query.id)
+      if (error) throw error
+      return res.json({ ok: true })
     }
+
     if (req.method === 'DELETE') {
-      await pool.query(`DELETE FROM cidades WHERE id = $1`, [req.query.id]);
-      return res.json({ ok: true });
+      const { error } = await supabase.from('cidades').delete().eq('id', req.query.id)
+      if (error) throw error
+      return res.json({ ok: true })
     }
-    res.status(405).end();
+
+    res.status(405).end()
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error(err)
+    res.status(500).json({ error: err.message })
   }
-};
+}

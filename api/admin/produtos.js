@@ -1,77 +1,95 @@
-const pool = require('../_db');
-const checkAuth = require('./_auth');
+const supabase = require('../_db')
+const checkAuth = require('./_auth')
 
 function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+}
+
+function mapProduto({ categorias, preco, preco_original, preco_promo, variacoes, ...p }) {
+  return {
+    ...p,
+    categoria_nome: categorias?.nome || null,
+    preco: preco != null ? Number(preco) : null,
+    preco_original: preco_original != null ? Number(preco_original) : null,
+    preco_promo: preco_promo != null ? Number(preco_promo) : null,
+    variacoes: (variacoes || []).map(v => ({ ...v, preco: Number(v.preco) }))
+  }
 }
 
 module.exports = async (req, res) => {
-  cors(res);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (!checkAuth(req)) return res.status(401).json({ error: 'Não autorizado' });
+  cors(res)
+  if (req.method === 'OPTIONS') return res.status(200).end()
+  if (!checkAuth(req)) return res.status(401).json({ error: 'Não autorizado' })
 
   try {
     if (req.method === 'GET') {
-      const { rows } = await pool.query(`
-        SELECT p.*, p.preco::float, p.preco_original::float, p.preco_promo::float,
-               c.nome AS categoria_nome,
-               COALESCE(json_agg(
-                 json_build_object('id',v.id,'rotulo',v.rotulo,'preco',v.preco::float)
-                 ORDER BY v.preco
-               ) FILTER (WHERE v.id IS NOT NULL), '[]') AS variacoes
-        FROM produtos p
-        LEFT JOIN categorias c ON c.id = p.categoria_id
-        LEFT JOIN variacoes v ON v.produto_id = p.id
-        GROUP BY p.id, c.nome
-        ORDER BY p.criado_em DESC
-      `);
-      return res.json(rows);
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*, categorias(nome), variacoes(id, rotulo, preco)')
+        .order('criado_em', { ascending: false })
+      if (error) throw error
+      return res.json((data || []).map(mapProduto))
     }
 
     if (req.method === 'POST') {
-      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes } = req.body;
-      const { rows: [p] } = await pool.query(
-        `INSERT INTO produtos (nome,descricao,foto,tipo,preco,categoria_id,destaque,ativo,promo,preco_original,preco_promo)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-        [nome, descricao||null, foto||null, tipo||'simples', preco||null, categoria_id||null,
-         !!destaque, ativo!==false, !!promo, preco_original||null, preco_promo||null]
-      );
-      if (Array.isArray(variacoes)) {
-        for (const v of variacoes) {
-          await pool.query(`INSERT INTO variacoes (produto_id,rotulo,preco) VALUES ($1,$2,$3)`, [p.id, v.rotulo, v.preco]);
-        }
+      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes } = req.body
+      const { data: p, error } = await supabase
+        .from('produtos')
+        .insert({
+          nome, descricao: descricao || null, foto: foto || null, tipo: tipo || 'simples',
+          preco: preco || null, categoria_id: categoria_id || null,
+          destaque: !!destaque, ativo: ativo !== false, promo: !!promo,
+          preco_original: preco_original || null, preco_promo: preco_promo || null
+        })
+        .select('id')
+        .single()
+      if (error) throw error
+      if (Array.isArray(variacoes) && variacoes.length) {
+        const { error: eV } = await supabase.from('variacoes').insert(
+          variacoes.map(v => ({ produto_id: p.id, rotulo: v.rotulo, preco: v.preco }))
+        )
+        if (eV) throw eV
       }
-      return res.status(201).json({ id: p.id });
+      return res.status(201).json({ id: p.id })
     }
 
     if (req.method === 'PUT') {
-      const id = req.query.id;
-      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes } = req.body;
-      await pool.query(
-        `UPDATE produtos SET nome=$1,descricao=$2,foto=$3,tipo=$4,preco=$5,categoria_id=$6,
-         destaque=$7,ativo=$8,promo=$9,preco_original=$10,preco_promo=$11 WHERE id=$12`,
-        [nome, descricao||null, foto||null, tipo||'simples', preco||null, categoria_id||null,
-         !!destaque, ativo!==false, !!promo, preco_original||null, preco_promo||null, id]
-      );
+      const id = req.query.id
+      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes } = req.body
+      const { error } = await supabase
+        .from('produtos')
+        .update({
+          nome, descricao: descricao || null, foto: foto || null, tipo: tipo || 'simples',
+          preco: preco || null, categoria_id: categoria_id || null,
+          destaque: !!destaque, ativo: ativo !== false, promo: !!promo,
+          preco_original: preco_original || null, preco_promo: preco_promo || null
+        })
+        .eq('id', id)
+      if (error) throw error
       if (Array.isArray(variacoes)) {
-        await pool.query(`DELETE FROM variacoes WHERE produto_id = $1`, [id]);
-        for (const v of variacoes) {
-          await pool.query(`INSERT INTO variacoes (produto_id,rotulo,preco) VALUES ($1,$2,$3)`, [id, v.rotulo, v.preco]);
+        const { error: eD } = await supabase.from('variacoes').delete().eq('produto_id', id)
+        if (eD) throw eD
+        if (variacoes.length) {
+          const { error: eV } = await supabase.from('variacoes').insert(
+            variacoes.map(v => ({ produto_id: id, rotulo: v.rotulo, preco: v.preco }))
+          )
+          if (eV) throw eV
         }
       }
-      return res.json({ ok: true });
+      return res.json({ ok: true })
     }
 
     if (req.method === 'DELETE') {
-      await pool.query(`DELETE FROM produtos WHERE id = $1`, [req.query.id]);
-      return res.json({ ok: true });
+      const { error } = await supabase.from('produtos').delete().eq('id', req.query.id)
+      if (error) throw error
+      return res.json({ ok: true })
     }
 
-    res.status(405).end();
+    res.status(405).end()
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error(err)
+    res.status(500).json({ error: err.message })
   }
-};
+}
