@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS produtos (
   nome           VARCHAR(200) NOT NULL,
   descricao      TEXT,
   foto           VARCHAR(500),
-  tipo           VARCHAR(20)   NOT NULL DEFAULT 'simples' CHECK (tipo IN ('simples','variacao')),
+  tipo           VARCHAR(20)   NOT NULL DEFAULT 'simples' CHECK (tipo IN ('simples','variacao','peso')),
   preco          DECIMAL(10,2),
   destaque       BOOLEAN DEFAULT false,
   ativo          BOOLEAN DEFAULT true,
@@ -117,3 +117,15 @@ ON CONFLICT (slug) DO NOTHING;
 SELECT setval('cidades_id_seq',  (SELECT MAX(id) FROM cidades));
 SELECT setval('bairros_id_seq',  (SELECT MAX(id) FROM bairros));
 SELECT setval('categorias_id_seq',(SELECT MAX(id) FROM categorias));
+
+-- ── Tipo por peso/quantidade ──────────────────────────────────
+ALTER TABLE produtos
+  ADD COLUMN IF NOT EXISTS preco_unidade     DECIMAL(10,2),
+  ADD COLUMN IF NOT EXISTS unidade_label     VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS quantidade_minima INT DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS quantidade_maxima INT,
+  ADD COLUMN IF NOT EXISTS multiplo_de       INT DEFAULT 1;
+
+ALTER TABLE produtos DROP CONSTRAINT IF EXISTS produtos_tipo_check;
+ALTER TABLE produtos ADD CONSTRAINT produtos_tipo_check
+  CHECK (tipo IN ('simples','variacao','peso'));

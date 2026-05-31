@@ -297,6 +297,8 @@ async function loadProdutos() {
 function prodRow(p) {
   const preco = p.tipo === 'variacao'
     ? (p.variacoes?.length ? 'de ' + brl(Math.min(...p.variacoes.map(v => v.preco))) : '—')
+    : p.tipo === 'peso'
+    ? (p.preco_unidade != null ? brl(p.preco_unidade) + '/' + (p.unidade_label || 'un') : '—')
     : brl(p.promo && p.preco_promo ? p.preco_promo : p.preco);
   const img = p.foto
     ? `<img src="${esc(p.foto)}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;">`
@@ -308,7 +310,7 @@ function prodRow(p) {
         ${p.descricao ? `<div class="text-dim" style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.descricao)}</div>` : ''}
       </div></div></td>
       <td class="text-dim">${esc(p.categoria_nome||'—')}</td>
-      <td class="text-dim">${p.tipo === 'variacao' ? 'Variação' : 'Simples'}</td>
+      <td class="text-dim">${{simples:'Simples',variacao:'Variação',peso:'Peso/Qtd'}[p.tipo]||p.tipo}</td>
       <td>${preco}</td>
       <td>
         ${p.ativo ? '<span class="badge badge-ativo">Ativo</span>' : '<span class="badge badge-inativo">Inativo</span>'}
@@ -337,6 +339,7 @@ function openProdutoModal(p = null) {
   const catOpts = (_cats||[]).map(c =>
     `<option value="${c.id}" ${String(p?.categoria_id) === String(c.id) ? 'selected' : ''}>${esc(c.nome)}</option>`
   ).join('');
+  const isPeso = p?.tipo === 'peso';
   const isVar = p?.tipo === 'variacao';
 
   openModal(p ? 'Editar Produto' : 'Novo Produto', `
@@ -356,11 +359,12 @@ function openProdutoModal(p = null) {
       <div class="form-group">
         <label>Tipo</label>
         <select id="pf-tipo" onchange="pfTipoChange()">
-          <option value="simples"  ${!isVar ? 'selected':''}>Simples (preço único)</option>
-          <option value="variacao" ${isVar  ? 'selected':''}>Variação (tamanhos/pesos)</option>
+          <option value="simples"  ${!isVar && !isPeso ? 'selected':''}>Simples (preço único)</option>
+          <option value="variacao" ${isVar  ? 'selected':''}>Com variações (opções fixas)</option>
+          <option value="peso"     ${isPeso ? 'selected':''}>Por peso/quantidade</option>
         </select>
       </div>
-      <div id="pf-preco-w" class="form-group" ${isVar ? 'hidden':''}>
+      <div id="pf-preco-w" class="form-group" ${(isVar || isPeso) ? 'hidden':''}>
         <label>Preço (R$)</label>
         <input type="number" id="pf-preco" value="${p?.preco??''}" step="0.01" min="0" placeholder="0,00">
       </div>
@@ -392,6 +396,28 @@ function openProdutoModal(p = null) {
         <div id="pf-vars-list" class="variations-list"></div>
         <button type="button" class="btn btn-secondary btn-sm mt-16" onclick="pfAddVar()">+ Adicionar variação</button>
       </div>
+      <div id="pf-peso-w" class="form-grid form-full" style="gap:12px" ${!isPeso ? 'hidden':''}>
+        <div class="form-group">
+          <label>Preço por unidade (R$)</label>
+          <input type="number" id="pf-preco-unidade" value="${p?.preco_unidade??''}" step="0.01" min="0" placeholder="14,90">
+        </div>
+        <div class="form-group">
+          <label>Unidade <span class="form-hint">(ex: 100g, kg, unidade)</span></label>
+          <input type="text" id="pf-unidade-label" value="${esc(p?.unidade_label??'')}" placeholder="100g">
+        </div>
+        <div class="form-group">
+          <label>Quantidade mínima</label>
+          <input type="number" id="pf-qtd-min" value="${p?.quantidade_minima??''}" min="1" step="1" placeholder="100">
+        </div>
+        <div class="form-group">
+          <label>Quantidade máxima <span class="form-hint">(opcional)</span></label>
+          <input type="number" id="pf-qtd-max" value="${p?.quantidade_maxima??''}" min="1" step="1">
+        </div>
+        <div class="form-group">
+          <label>Múltiplo de <span class="form-hint">(passo)</span></label>
+          <input type="number" id="pf-multiplo" value="${p?.multiplo_de??1}" min="1" step="1" placeholder="1">
+        </div>
+      </div>
       <div class="toggle-row form-full">
         <div><div class="toggle-label">Produto ativo</div><div class="toggle-sub">Visível na loja</div></div>
         <label class="toggle"><input type="checkbox" id="pf-ativo" ${p?.ativo !== false ? 'checked':''}><div class="toggle-track"></div></label>
@@ -420,9 +446,10 @@ function openProdutoModal(p = null) {
 }
 
 function pfTipoChange() {
-  const isVar = document.getElementById('pf-tipo').value === 'variacao';
-  document.getElementById('pf-preco-w').hidden = isVar;
-  document.getElementById('pf-vars-w').hidden = !isVar;
+  const tipo = document.getElementById('pf-tipo').value;
+  document.getElementById('pf-preco-w').hidden = tipo !== 'simples';
+  document.getElementById('pf-vars-w').hidden = tipo !== 'variacao';
+  document.getElementById('pf-peso-w').hidden = tipo !== 'peso';
 }
 function pfPromoChange() {
   document.getElementById('pf-promo-w').hidden = !document.getElementById('pf-promo').checked;
@@ -512,8 +539,14 @@ async function saveProduto() {
   };
   if (tipo === 'simples') {
     body.preco = parseFloat(document.getElementById('pf-preco').value) || null;
-  } else {
+  } else if (tipo === 'variacao') {
     body.variacoes = _modalVars.filter(v => v.rotulo.trim());
+  } else if (tipo === 'peso') {
+    body.preco_unidade     = parseFloat(document.getElementById('pf-preco-unidade').value) || null;
+    body.unidade_label     = document.getElementById('pf-unidade-label').value.trim() || null;
+    body.quantidade_minima = parseInt(document.getElementById('pf-qtd-min').value) || null;
+    body.quantidade_maxima = parseInt(document.getElementById('pf-qtd-max').value) || null;
+    body.multiplo_de       = parseInt(document.getElementById('pf-multiplo').value) || 1;
   }
   if (body.promo) {
     body.preco_original = parseFloat(document.getElementById('pf-preco-orig').value) || null;

@@ -11,13 +11,17 @@ function cors(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
 }
 
-function mapProduto({ categorias, preco, preco_original, preco_promo, variacoes, ...p }) {
+function mapProduto({ categorias, preco, preco_original, preco_promo, preco_unidade, quantidade_minima, quantidade_maxima, multiplo_de, variacoes, ...p }) {
   return {
     ...p,
     categoria_nome: categorias?.nome || null,
     preco: preco != null ? Number(preco) : null,
     preco_original: preco_original != null ? Number(preco_original) : null,
     preco_promo: preco_promo != null ? Number(preco_promo) : null,
+    preco_unidade: preco_unidade != null ? Number(preco_unidade) : null,
+    quantidade_minima: quantidade_minima != null ? Number(quantidade_minima) : null,
+    quantidade_maxima: quantidade_maxima != null ? Number(quantidade_maxima) : null,
+    multiplo_de: multiplo_de != null ? Number(multiplo_de) : null,
     variacoes: (variacoes || []).map(v => ({ ...v, preco: Number(v.preco) }))
   }
 }
@@ -85,14 +89,18 @@ const handler = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes } = body
+      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes,
+              preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de } = body
       const { data: p, error } = await supabase
         .from('produtos')
         .insert({
           nome, descricao: descricao || null, foto: foto || null, tipo: tipo || 'simples',
           preco: preco || null, categoria_id: categoria_id || null,
           destaque: !!destaque, ativo: ativo !== false, promo: !!promo,
-          preco_original: preco_original || null, preco_promo: preco_promo || null
+          preco_original: preco_original || null, preco_promo: preco_promo || null,
+          preco_unidade: preco_unidade || null, unidade_label: unidade_label || null,
+          quantidade_minima: quantidade_minima || null, quantidade_maxima: quantidade_maxima || null,
+          multiplo_de: multiplo_de || null
         })
         .select('id')
         .single()
@@ -108,14 +116,18 @@ const handler = async (req, res) => {
 
     if (req.method === 'PUT') {
       const id = req.query.id
-      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes } = body
+      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes,
+              preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de } = body
       const { error } = await supabase
         .from('produtos')
         .update({
           nome, descricao: descricao || null, foto: foto || null, tipo: tipo || 'simples',
           preco: preco || null, categoria_id: categoria_id || null,
           destaque: !!destaque, ativo: ativo !== false, promo: !!promo,
-          preco_original: preco_original || null, preco_promo: preco_promo || null
+          preco_original: preco_original || null, preco_promo: preco_promo || null,
+          preco_unidade: preco_unidade || null, unidade_label: unidade_label || null,
+          quantidade_minima: quantidade_minima || null, quantidade_maxima: quantidade_maxima || null,
+          multiplo_de: multiplo_de || null
         })
         .eq('id', id)
       if (error) throw error

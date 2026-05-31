@@ -62,6 +62,21 @@ function nextId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
+function parsePesoUnit(label) {
+  const m = (label || '').match(/^(\d+(?:\.\d+)?)\s*(.+)$/);
+  return m ? { base: parseFloat(m[1]), suffix: m[2] } : { base: 1, suffix: label || 'un' };
+}
+
+function pesoQtyValida(input, produto) {
+  const qty = parseFloat(input.value);
+  const min = produto.quantidade_minima || 1;
+  const step = produto.multiplo_de || 1;
+  const max = produto.quantidade_maxima;
+  if (!qty || qty < min) return false;
+  if (max && qty > max) return false;
+  return (qty - min) % step === 0;
+}
+
 /* ── Dados demo (fallback quando a API não existe) ── */
 const DEMO_CATEGORIAS = [
   { id: 1, nome: 'Kits Sushi Preguiçoso', slug: 'kits' },
@@ -359,10 +374,29 @@ function criarCard(produto) {
     });
   }
 
+  /* Peso/Quantidade */
+  if (produto.tipo === 'peso') {
+    const { suffix } = parsePesoUnit(produto.unidade_label);
+    const min = produto.quantidade_minima || 1;
+    const step = produto.multiplo_de || 1;
+    const pesoWrap = document.createElement('div');
+    pesoWrap.className = 'card-peso';
+    pesoWrap.innerHTML = `<div class="peso-row"><input type="number" class="peso-qty-input" min="${min}" step="${step}" placeholder="${min}" aria-label="Quantidade"><span class="peso-unit">${suffix}</span></div>`;
+    card.querySelector('.card-body').insertBefore(pesoWrap, card.querySelector('.card-footer'));
+  }
+
   atualizarPrecoCard(card, produto);
 
   /* Botão adicionar */
   const addBtn = card.querySelector('.card-add-btn');
+  if (produto.tipo === 'peso') {
+    addBtn.disabled = true;
+    const qtyInput = card.querySelector('.peso-qty-input');
+    qtyInput.addEventListener('input', () => {
+      atualizarPrecoCard(card, produto);
+      addBtn.disabled = !pesoQtyValida(qtyInput, produto);
+    });
+  }
   addBtn.addEventListener('click', () => adicionarAoCarrinho(produto, card, addBtn));
 
   return card;
@@ -376,6 +410,15 @@ function atualizarPrecoCard(card, produto) {
     const sel = card.querySelector('.var-btn.selected');
     const preco = sel ? Number(sel.dataset.preco) : produto.variacoes[0]?.preco;
     priceEl.insertAdjacentHTML('beforeend', `<span class="price-normal">${brl(preco)}</span>`);
+  } else if (produto.tipo === 'peso') {
+    const input = card.querySelector('.peso-qty-input');
+    const qty = input ? parseFloat(input.value) : 0;
+    const { base } = parsePesoUnit(produto.unidade_label);
+    if (qty > 0 && produto.preco_unidade != null) {
+      priceEl.insertAdjacentHTML('beforeend', `<span class="price-normal">${brl((qty / base) * produto.preco_unidade)}</span>`);
+    } else {
+      priceEl.insertAdjacentHTML('beforeend', `<span class="price-unit">${brl(produto.preco_unidade)}/${produto.unidade_label||'un'}</span>`);
+    }
   } else if (produto.promo) {
     priceEl.insertAdjacentHTML('beforeend', `<span class="price-original">${brl(produto.preco_original)}</span>`);
     priceEl.insertAdjacentHTML('beforeend', `<span class="price-promo">${brl(produto.preco_promo)}</span>`);
@@ -395,6 +438,13 @@ function adicionarAoCarrinho(produto, card, addBtn) {
     const varId = sel?.dataset.varId;
     variacao = produto.variacoes.find(v => v.id === varId) || produto.variacoes[0];
     preco = variacao.preco;
+  } else if (produto.tipo === 'peso') {
+    const input = card.querySelector('.peso-qty-input');
+    if (!input || !pesoQtyValida(input, produto)) return;
+    const qty = parseFloat(input.value);
+    const { base, suffix } = parsePesoUnit(produto.unidade_label);
+    preco = (qty / base) * produto.preco_unidade;
+    variacao = { rotulo: qty + suffix };
   } else if (produto.promo) {
     preco = produto.preco_promo;
   } else {
@@ -403,7 +453,9 @@ function adicionarAoCarrinho(produto, card, addBtn) {
 
   const existente = state.cart.find(item =>
     item.produto.id === produto.id &&
-    item.variacao?.id === variacao?.id
+    (item.produto.tipo === 'peso'
+      ? item.variacao?.rotulo === variacao?.rotulo
+      : item.variacao?.id === variacao?.id)
   );
 
   if (existente) {
@@ -414,6 +466,15 @@ function adicionarAoCarrinho(produto, card, addBtn) {
 
   addBtn.classList.add('added');
   setTimeout(() => addBtn.classList.remove('added'), 600);
+
+  if (produto.tipo === 'peso') {
+    const input = card.querySelector('.peso-qty-input');
+    if (input) {
+      input.value = '';
+      atualizarPrecoCard(card, produto);
+      setTimeout(() => { addBtn.disabled = true; }, 650);
+    }
+  }
 
   atualizarUICarrinho();
 }
@@ -627,8 +688,13 @@ function gerarMensagem() {
   let msg = '🍣 *Pedido — Empório Japa Gourmet*\n\n';
 
   state.cart.forEach(item => {
-    const varLabel = item.variacao ? ` (${item.variacao.rotulo})` : '';
-    msg += `• ${item.produto.nome}${varLabel} x${item.quantidade} — ${brl(item.preco * item.quantidade)}\n`;
+    if (item.produto.tipo === 'peso') {
+      const qtdLabel = item.quantidade > 1 ? ` x${item.quantidade}` : '';
+      msg += `• ${item.produto.nome} — ${item.variacao.rotulo}${qtdLabel} — ${brl(item.preco * item.quantidade)}\n`;
+    } else {
+      const varLabel = item.variacao ? ` (${item.variacao.rotulo})` : '';
+      msg += `• ${item.produto.nome}${varLabel} x${item.quantidade} — ${brl(item.preco * item.quantidade)}\n`;
+    }
   });
 
   msg += `\n*Subtotal:* ${brl(sub)}`;
