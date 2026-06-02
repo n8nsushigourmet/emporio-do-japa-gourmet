@@ -7,7 +7,7 @@ const UPLOAD_MAX = 5 * 1024 * 1024
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
 }
 
@@ -89,7 +89,7 @@ const handler = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes,
+      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, variacoes,
               preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de } = body
       const { data: p, error } = await supabase
         .from('produtos')
@@ -98,6 +98,7 @@ const handler = async (req, res) => {
           preco: preco || null, categoria_id: categoria_id || null,
           destaque: !!destaque, ativo: ativo !== false, promo: !!promo,
           preco_original: preco_original || null, preco_promo: preco_promo || null,
+          promo_inicio: promo_inicio || null, promo_fim: promo_fim || null,
           preco_unidade: preco_unidade || null, unidade_label: unidade_label || null,
           quantidade_minima: quantidade_minima || null, quantidade_maxima: quantidade_maxima || null,
           multiplo_de: multiplo_de || null
@@ -114,9 +115,17 @@ const handler = async (req, res) => {
       return res.status(201).json({ id: p.id })
     }
 
+    if (req.method === 'PATCH') {
+      const id = req.query.id
+      if (!id) return res.status(400).json({ error: 'id obrigatório' })
+      const { error } = await supabase.from('produtos').update(body).eq('id', id)
+      if (error) throw error
+      return res.json({ ok: true })
+    }
+
     if (req.method === 'PUT') {
       const id = req.query.id
-      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, variacoes,
+      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, variacoes,
               preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de } = body
       const { error } = await supabase
         .from('produtos')
@@ -125,6 +134,7 @@ const handler = async (req, res) => {
           preco: preco || null, categoria_id: categoria_id || null,
           destaque: !!destaque, ativo: ativo !== false, promo: !!promo,
           preco_original: preco_original || null, preco_promo: preco_promo || null,
+          promo_inicio: promo_inicio || null, promo_fim: promo_fim || null,
           preco_unidade: preco_unidade || null, unidade_label: unidade_label || null,
           quantidade_minima: quantidade_minima || null, quantidade_maxima: quantidade_maxima || null,
           multiplo_de: multiplo_de || null
