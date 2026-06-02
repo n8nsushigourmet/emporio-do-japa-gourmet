@@ -182,21 +182,21 @@ const DEMO_PRODUTOS = [
 
 /* ── Carregar dados ── */
 async function carregarDados() {
-  try {
-    const [resCats, resProd, resCids] = await Promise.all([
-      fetch(API_CATEGORIAS),
-      fetch(API_PRODUTOS),
-      fetch(API_CIDADES),
-    ]);
-    if (!resCats.ok || !resProd.ok || !resCids.ok) throw new Error('API indisponível');
-    state.categorias = await resCats.json();
-    state.produtos    = await resProd.json();
-    state.cidades     = await resCids.json();
-  } catch {
-    state.categorias = DEMO_CATEGORIAS;
-    state.produtos    = DEMO_PRODUTOS;
-    state.cidades     = DEMO_CIDADES;
-  }
+  const toJson = r => r.ok ? r.json() : Promise.reject(r.status);
+  const [resCats, resProd, resCids] = await Promise.allSettled([
+    fetch(API_CATEGORIAS).then(toJson),
+    fetch(API_PRODUTOS).then(toJson),
+    fetch(API_CIDADES).then(toJson),
+  ]);
+
+  if (resCats.status === 'rejected') console.warn('[API categorias]', resCats.reason);
+  if (resProd.status === 'rejected') console.warn('[API produtos]',   resProd.reason);
+  if (resCids.status === 'rejected') console.warn('[API cidades]',    resCids.reason);
+
+  state.categorias = resCats.status === 'fulfilled' ? resCats.value : DEMO_CATEGORIAS;
+  state.produtos    = resProd.status === 'fulfilled' ? resProd.value : DEMO_PRODUTOS;
+  state.cidades     = resCids.status === 'fulfilled' ? resCids.value : DEMO_CIDADES;
+
   renderizarTudo();
 }
 
