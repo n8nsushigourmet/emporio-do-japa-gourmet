@@ -236,9 +236,9 @@ Produto vendido por peso/quantidade arbitrária.
   - Clique no card abre modal de produto
 - Modal de produto (mobile-first):
   - **Mobile (≤480px):** bottom sheet 85dvh, foto 16/9, variações em pills antes do preço, botão fixo 52px no rodapé, swipe down no handle fecha
-  - **Desktop (769px+):** modal 480px centralizado, foto à esquerda, info à direita, animação fade+scale
+  - **Desktop (769px+):** modal 480px centralizado, foto quadrada à esquerda (200px), info à direita, animação fade+scale; hierarquia visual ajustada: nome 20px → pills 12px/gap 6px → preço 18px + botão 36px na mesma linha
   - Pills de variação estilo ML/Shopee: `[rótulo  R$ preço]`, selecionado = marrom escuro + creme
-  - Preço no rodapé do sheet atualiza ao trocar variação
+  - Preço no rodapé atualiza ao trocar variação
 - Carrinho:
   - Barra flutuante ao adicionar primeiro item
   - Modal com lista de itens, controle +/−/remover
@@ -361,7 +361,7 @@ emporio-do-japa-gourmet/
 
 | Funcionalidade | Status |
 |---|---|
-| Modal mobile-first com bottom sheet e pills de variação | ✅ Implementado |
+| Modal de produto mobile-first (bottom sheet + pills + ajustes desktop) | ✅ Implementado |
 | Múltiplas fotos por produto (galeria 4 slots) | ✅ Implementado |
 | Toggle ativo/destaque clicável na listagem admin | ✅ Implementado |
 | Promoções com data início/fim + expiração automática | ✅ Implementado |
