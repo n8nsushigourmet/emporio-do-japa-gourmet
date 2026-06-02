@@ -885,6 +885,28 @@ a { color: inherit; text-decoration: none; }
   color: var(--texto-suave);
   flex-shrink: 0;
 }
+.peso-hint {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--texto-suave);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.peso-hint-btn {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--ambar);
+  background: transparent;
+  color: var(--ambar);
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.peso-hint-btn:hover { background: var(--ambar); color: #fff; }
 .price-unit {
   font-size: 12px;
   font-weight: 600;

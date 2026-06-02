@@ -381,7 +381,7 @@ function criarCard(produto) {
     const step = produto.multiplo_de || 1;
     const pesoWrap = document.createElement('div');
     pesoWrap.className = 'card-peso';
-    pesoWrap.innerHTML = `<div class="peso-row"><input type="number" class="peso-qty-input" min="${min}" step="${step}" placeholder="${min}" aria-label="Quantidade"><span class="peso-unit">${suffix}</span></div>`;
+    pesoWrap.innerHTML = `<div class="peso-row"><input type="number" class="peso-qty-input" min="${min}" step="${step}" placeholder="${min}" aria-label="Quantidade"><span class="peso-unit">${suffix}</span></div><div class="peso-hint" style="display:none"></div>`;
     card.querySelector('.card-body').insertBefore(pesoWrap, card.querySelector('.card-footer'));
   }
 
@@ -392,9 +392,27 @@ function criarCard(produto) {
   if (produto.tipo === 'peso') {
     addBtn.disabled = true;
     const qtyInput = card.querySelector('.peso-qty-input');
+    const hintEl = card.querySelector('.peso-hint');
+    const { suffix: sfx } = parsePesoUnit(produto.unidade_label);
+    const step = produto.multiplo_de || 1;
     qtyInput.addEventListener('input', () => {
       atualizarPrecoCard(card, produto);
-      addBtn.disabled = !pesoQtyValida(qtyInput, produto);
+      const qty = parseFloat(qtyInput.value);
+      const min = produto.quantidade_minima || 1;
+      const max = produto.quantidade_maxima;
+      const valido = qty && qty >= min && (!max || qty <= max);
+      addBtn.disabled = !valido;
+      if (valido && step > 1 && qty % step !== 0) {
+        const sugerido = Math.ceil(qty / step) * step;
+        hintEl.innerHTML = `💡 Sugerimos arredondar para ${sugerido}${sfx} <button class="peso-hint-btn" type="button">Usar ${sugerido}${sfx}</button>`;
+        hintEl.style.display = '';
+        hintEl.querySelector('.peso-hint-btn').addEventListener('click', () => {
+          qtyInput.value = sugerido;
+          qtyInput.dispatchEvent(new Event('input'));
+        });
+      } else {
+        hintEl.style.display = 'none';
+      }
     });
   }
   addBtn.addEventListener('click', () => adicionarAoCarrinho(produto, card, addBtn));
@@ -440,8 +458,11 @@ function adicionarAoCarrinho(produto, card, addBtn) {
     preco = variacao.preco;
   } else if (produto.tipo === 'peso') {
     const input = card.querySelector('.peso-qty-input');
-    if (!input || !pesoQtyValida(input, produto)) return;
+    if (!input) return;
     const qty = parseFloat(input.value);
+    const min = produto.quantidade_minima || 1;
+    const max = produto.quantidade_maxima;
+    if (!qty || qty < min || (max && qty > max)) return;
     const { base, suffix } = parsePesoUnit(produto.unidade_label);
     preco = (qty / base) * produto.preco_unidade;
     variacao = { rotulo: qty + suffix };
