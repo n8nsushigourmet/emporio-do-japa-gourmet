@@ -822,16 +822,19 @@ function abrirModalProduto(produto) {
          </div>
        </div>`;
 
-  let selHtml = '';
+  /* Variations — pill style (label + price) */
+  let varHtml = '';
   if (produto.tipo === 'variacao' && produto.variacoes?.length) {
-    selHtml = `<div class="pmodal-vars" id="pm-vars">${produto.variacoes.map((v, i) =>
-      `<button class="var-btn${i===0?' selected':''}" data-var-id="${v.id}" data-preco="${v.preco}">${escHtml(v.rotulo)}</button>`
+    varHtml = `<div class="pmodal-pill-vars" id="pm-vars">${produto.variacoes.map((v, i) =>
+      `<button class="pmodal-pill${i===0?' selected':''}" data-var-id="${v.id}" data-preco="${v.preco}">
+         ${escHtml(v.rotulo)}&ensp;<strong>${brl(v.preco)}</strong>
+       </button>`
     ).join('')}</div>`;
   } else if (produto.tipo === 'peso') {
     const { suffix } = parsePesoUnit(produto.unidade_label);
     const min = produto.quantidade_minima || 1;
     const step = produto.multiplo_de || 1;
-    selHtml = `<div class="pmodal-peso">
+    varHtml = `<div class="pmodal-peso">
       <div class="peso-row">
         <input type="number" class="peso-qty-input" id="pm-qty" min="${min}" step="${step}" placeholder="${min}" aria-label="Quantidade">
         <span class="peso-unit">${suffix}</span>
@@ -840,49 +843,61 @@ function abrirModalProduto(produto) {
     </div>`;
   }
 
-  let precoHtml;
+  /* Initial footer price */
+  let footerPrecoHtml;
   if (produto.tipo === 'peso') {
-    precoHtml = `<div class="pmodal-price-unit">${brl(produto.preco_unidade)}/${produto.unidade_label||'un'}</div>`;
+    footerPrecoHtml = `<span class="pmodal-footer-price">${brl(produto.preco_unidade)}/${produto.unidade_label||'un'}</span>`;
   } else if (produto.promo) {
-    precoHtml = `<div class="pmodal-price"><span class="price-original">${brl(produto.preco_original)}</span><span class="pmodal-promo-val">${brl(produto.preco_promo)}</span></div>`;
+    footerPrecoHtml = `<span class="pmodal-footer-price-orig">${brl(produto.preco_original)}</span>
+                       <span class="pmodal-footer-price">${brl(produto.preco_promo)}</span>`;
   } else if (produto.tipo === 'variacao') {
-    precoHtml = `<div class="pmodal-price" id="pm-price">${brl(produto.variacoes?.[0]?.preco)}</div>`;
+    footerPrecoHtml = `<span class="pmodal-footer-price" id="pm-footer-price-val">${brl(produto.variacoes?.[0]?.preco)}</span>`;
   } else {
-    precoHtml = `<div class="pmodal-price">${brl(produto.preco)}</div>`;
+    footerPrecoHtml = `<span class="pmodal-footer-price">${brl(produto.preco)}</span>`;
   }
 
   body.innerHTML = `
-    ${galHtml}
-    <div class="pmodal-info">
-      <div class="pmodal-head">
-        <h2 class="pmodal-nome">${escHtml(produto.nome)}</h2>
-        ${produto.promo ? '<span class="badge badge-promo">Promoção</span>' : ''}
-      </div>
-      ${produto.descricao ? `<p class="pmodal-desc">${escHtml(produto.descricao)}</p>` : ''}
-      ${produto.categoria_nome ? `<div class="pmodal-cat">${escHtml(produto.categoria_nome)}</div>` : ''}
-      ${selHtml}
-      <div class="pmodal-footer">
-        ${precoHtml}
-        <button class="pmodal-add-btn" id="pm-add-btn"${produto.tipo === 'peso' ? ' disabled' : ''}>Adicionar ao carrinho</button>
+    <div class="pmodal-handle" id="pmodal-handle"></div>
+    <div class="pmodal-layout">
+      <div class="pmodal-col-img">${galHtml}</div>
+      <div class="pmodal-col-info">
+        <div class="pmodal-scroll">
+          <div class="pmodal-head">
+            <h2 class="pmodal-nome">${escHtml(produto.nome)}</h2>
+            ${produto.promo ? '<span class="badge badge-promo">Promoção</span>' : ''}
+          </div>
+          ${produto.categoria_nome ? `<div class="pmodal-cat">${escHtml(produto.categoria_nome)}</div>` : ''}
+          ${varHtml}
+          ${produto.descricao ? `<p class="pmodal-desc">${escHtml(produto.descricao)}</p>` : ''}
+        </div>
+        <div class="pmodal-footer">
+          <div class="pmodal-footer-prices" id="pm-footer-prices">${footerPrecoHtml}</div>
+          <button class="pmodal-add-btn" id="pm-add-btn"${produto.tipo === 'peso' ? ' disabled' : ''}>
+            Adicionar ao carrinho
+          </button>
+        </div>
       </div>
     </div>`;
 
+  /* Variation pill click: update selected + footer price */
   if (produto.tipo === 'variacao') {
-    $$('#pm-vars .var-btn').forEach(btn => {
+    $$('#pm-vars .pmodal-pill').forEach(btn => {
       btn.addEventListener('click', () => {
-        $$('#pm-vars .var-btn').forEach(b => b.classList.remove('selected'));
+        $$('#pm-vars .pmodal-pill').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
-        const priceEl = $('#pm-price');
-        if (priceEl) priceEl.textContent = brl(Number(btn.dataset.preco));
+        const fpv = $('#pm-footer-price-val');
+        if (fpv) fpv.textContent = brl(Number(btn.dataset.preco));
       });
     });
   }
 
+  /* Peso input */
   if (produto.tipo === 'peso') {
     const input  = $('#pm-qty');
     const hintEl = $('#pm-hint');
     const addBtn = $('#pm-add-btn');
-    const { suffix: sfx } = parsePesoUnit(produto.unidade_label);
+    const fpPrices = $('#pm-footer-prices');
+    const { suffix: sfx, base } = parsePesoUnit(produto.unidade_label);
     const step = produto.multiplo_de || 1;
     input.addEventListener('input', () => {
       const qty = parseFloat(input.value);
@@ -890,6 +905,11 @@ function abrirModalProduto(produto) {
       const max = produto.quantidade_maxima;
       const valido = qty && qty >= min && (!max || qty <= max);
       addBtn.disabled = !valido;
+      if (valido && produto.preco_unidade) {
+        fpPrices.innerHTML = `<span class="pmodal-footer-price">${brl((qty / base) * produto.preco_unidade)}</span>`;
+      } else {
+        fpPrices.innerHTML = `<span class="pmodal-footer-price">${brl(produto.preco_unidade)}/${produto.unidade_label||'un'}</span>`;
+      }
       if (valido && step > 1 && qty % step !== 0) {
         const sugerido = Math.ceil(qty / step) * step;
         hintEl.innerHTML = `💡 Sugerimos arredondar para ${sugerido}${sfx} <button class="peso-hint-btn" type="button">Usar ${sugerido}${sfx}</button>`;
@@ -913,11 +933,15 @@ function abrirModalProduto(produto) {
     pmSetupSwipe(fotos);
   }
 
+  pmSetupSwipeDown();
+
   overlay.hidden = false;
   document.body.style.overflow = 'hidden';
 }
 
 function fecharModalProduto() {
+  const dialog = $('#prod-modal-dialog');
+  if (dialog) { dialog.style.transform = ''; dialog.style.transition = ''; }
   $('#prod-modal-overlay').hidden = true;
   document.body.style.overflow = '';
   _modalProduto = null;
@@ -936,7 +960,7 @@ function pmAdicionarCarrinho() {
   let variacao = null, preco;
 
   if (produto.tipo === 'variacao') {
-    const sel = $('#pm-vars .var-btn.selected') || $('#pm-vars .var-btn');
+    const sel = $('#pm-vars .pmodal-pill.selected') || $('#pm-vars .pmodal-pill');
     variacao = produto.variacoes.find(v => String(v.id) === sel?.dataset.varId) || produto.variacoes[0];
     preco = variacao.preco;
   } else if (produto.tipo === 'peso') {
@@ -980,6 +1004,27 @@ function pmSetupSwipe(fotos) {
       : Math.max(_pmFotoAtiva - 1, 0);
     if (next !== _pmFotoAtiva) pmTrocarFoto(next, fotos);
   }, { passive: true });
+}
+
+function pmSetupSwipeDown() {
+  const dialog = $('#prod-modal-dialog');
+  const handle = $('#pmodal-handle');
+  if (!handle || !dialog) return;
+  let startY = 0, delta = 0;
+  handle.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+    delta = 0;
+    dialog.style.transition = 'none';
+  }, { passive: true });
+  handle.addEventListener('touchmove', e => {
+    delta = e.touches[0].clientY - startY;
+    if (delta > 0) dialog.style.transform = `translateY(${delta}px)`;
+  }, { passive: true });
+  handle.addEventListener('touchend', () => {
+    dialog.style.transition = '';
+    if (delta > 80) fecharModalProduto();
+    else dialog.style.transform = '';
+  });
 }
 
 /* ── Busca ── */

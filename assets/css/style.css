@@ -923,84 +923,171 @@ a { color: inherit; text-decoration: none; }
 .prod-modal-overlay {
   position: fixed; inset: 0; z-index: 300;
   background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
   display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn .2s ease;
 }
 .prod-modal-overlay[hidden] { display: none !important; }
+
 .prod-modal-dialog {
   background: var(--creme);
   border-radius: 20px 20px 0 0;
-  width: 100%; max-width: 520px;
-  max-height: 92vh;
-  overflow-y: auto;
+  width: 100%;
+  max-height: 85dvh;
+  display: flex;
+  flex-direction: column;
   position: relative;
-  scrollbar-width: none;
+  overflow: hidden;
+  animation: slideUp .32s cubic-bezier(.32,.72,0,1);
+  will-change: transform;
+  transition: transform .28s cubic-bezier(.32,.72,0,1);
 }
-.prod-modal-dialog::-webkit-scrollbar { display: none; }
-@media (min-width: 600px) {
-  .prod-modal-overlay { align-items: center; }
-  .prod-modal-dialog  { border-radius: 20px; max-height: 88vh; }
-}
+
 .prod-modal-close {
-  position: absolute; top: 12px; right: 12px; z-index: 1;
-  width: 32px; height: 32px; border-radius: 50%;
-  background: rgba(0,0,0,.12); border: none; font-size: 14px;
+  position: absolute; top: 10px; right: 14px; z-index: 10;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,.85); border: none; font-size: 13px; color: var(--texto);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: background .15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
 }
-.prod-modal-close:hover { background: rgba(0,0,0,.22); }
+.prod-modal-close:hover { background: #fff; }
 
-.pmodal-gallery { background: var(--creme-escuro); position: relative; }
-.pmodal-gallery-main { width: 100%; aspect-ratio: 1; overflow: hidden; }
+/* Body wrapper (flex column passthrough) */
+#prod-modal-body {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-height: 0;
+}
+
+/* Drag handle */
+.pmodal-handle {
+  flex-shrink: 0;
+  width: 40px; height: 4px; border-radius: 2px;
+  background: rgba(0,0,0,.18);
+  margin: 10px auto 0;
+  touch-action: none;
+}
+
+/* Two-column layout (stacked on mobile, side-by-side on desktop) */
+.pmodal-layout {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-height: 0;
+}
+
+/* Image column */
+.pmodal-col-img { flex-shrink: 0; background: var(--creme-escuro); }
+.pmodal-gallery { position: relative; }
+.pmodal-gallery-main { width: 100%; aspect-ratio: 16/9; overflow: hidden; }
 .pmodal-gallery-main img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pmodal-gallery-placeholder {
-  display: flex; align-items: center; justify-content: center; font-size: 72px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 64px; aspect-ratio: 16/9;
 }
-.pmodal-thumbs {
-  display: flex; gap: 6px; padding: 8px; overflow-x: auto; scrollbar-width: none;
-}
+.pmodal-thumbs { display: flex; gap: 6px; padding: 8px; overflow-x: auto; scrollbar-width: none; }
 .pmodal-thumbs::-webkit-scrollbar { display: none; }
 .pmodal-thumb {
-  flex-shrink: 0; width: 54px; height: 54px; padding: 0;
-  border-radius: 7px; overflow: hidden; border: 2px solid transparent;
+  flex-shrink: 0; width: 48px; height: 48px; padding: 0;
+  border-radius: 6px; overflow: hidden; border: 2px solid transparent;
   background: none; cursor: pointer; transition: border-color .15s;
 }
 .pmodal-thumb.active { border-color: var(--ambar); }
 .pmodal-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-.pmodal-info { padding: 20px 20px 28px; }
-.pmodal-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+/* Info column */
+.pmodal-col-info {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-height: 0;
+}
+
+/* Scrollable content area */
+.pmodal-scroll {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  padding: 14px 20px 8px; scrollbar-width: none;
+}
+.pmodal-scroll::-webkit-scrollbar { display: none; }
+
+.pmodal-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
 .pmodal-nome {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 28px; font-weight: 600;
+  font-size: 24px; font-weight: 600;
   color: var(--marrom-escuro); line-height: 1.2; margin: 0; flex: 1;
 }
-.pmodal-desc { font-size: 14px; color: var(--texto-suave); line-height: 1.6; margin: 0 0 10px; }
 .pmodal-cat {
   font-size: 11px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--ambar); margin-bottom: 14px;
+  letter-spacing: .06em; color: var(--ambar); margin: 6px 0 12px;
 }
-.pmodal-vars { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.pmodal-peso { margin-bottom: 16px; }
+.pmodal-desc { font-size: 13.5px; color: var(--texto-suave); line-height: 1.6; margin: 10px 0 0; }
+
+/* Variation pills — ML/Shopee style */
+.pmodal-pill-vars { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.pmodal-pill {
+  padding: 7px 14px;
+  border-radius: 99px;
+  border: 1.5px solid var(--marrom);
+  background: transparent;
+  color: var(--marrom);
+  font-size: 13px; font-weight: 500; font-family: inherit;
+  cursor: pointer; transition: all .15s; line-height: 1.3;
+}
+.pmodal-pill:hover { border-color: var(--marrom-escuro); background: var(--ambar-fundo); }
+.pmodal-pill.selected {
+  background: var(--marrom-escuro); border-color: var(--marrom-escuro); color: var(--creme);
+}
+.pmodal-pill strong { font-weight: 700; }
+
+/* Peso input in modal */
+.pmodal-peso { margin: 10px 0 4px; }
+
+/* Fixed footer: price + add button */
 .pmodal-footer {
-  display: flex; align-items: center; gap: 12px;
-  margin-top: 16px; padding-top: 16px;
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--creme-escuro);
+  background: var(--creme);
 }
-.pmodal-price {
-  font-size: 22px; font-weight: 700; color: var(--ambar);
-  display: flex; align-items: center; gap: 6px; white-space: nowrap;
-}
-.pmodal-promo-val { font-size: 22px; font-weight: 700; color: var(--ambar); }
-.pmodal-price-unit { font-size: 14px; font-weight: 600; color: var(--texto-suave); white-space: nowrap; }
+.pmodal-footer-prices { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.pmodal-footer-price { font-size: 22px; font-weight: 700; color: var(--ambar); white-space: nowrap; }
+.pmodal-footer-price-orig { font-size: 12px; color: var(--texto-suave); text-decoration: line-through; }
+
 .pmodal-add-btn {
-  flex: 1; height: 48px;
+  flex: 1; height: 52px;
   background: var(--marrom-escuro); color: var(--creme);
-  border: none; border-radius: var(--radius-md);
+  border: none; border-radius: var(--radius-lg);
   font-size: 15px; font-weight: 600; font-family: inherit;
   cursor: pointer; transition: background .15s;
 }
 .pmodal-add-btn:hover { background: var(--marrom); }
-.pmodal-add-btn:disabled { opacity: .5; cursor: not-allowed; }
+.pmodal-add-btn:disabled { opacity: .45; cursor: not-allowed; }
+.pmodal-add-btn:disabled:hover { background: var(--marrom-escuro); }
+
+/* Desktop: side-by-side */
+@media (min-width: 769px) {
+  .prod-modal-overlay { align-items: center; }
+  .prod-modal-dialog {
+    width: 480px; height: auto; max-height: 90vh;
+    border-radius: 20px;
+    animation: pmFadeScale .22s cubic-bezier(.32,.72,0,1);
+  }
+  #prod-modal-body { flex-direction: row; }
+  .pmodal-handle { display: none; }
+  .pmodal-layout { flex-direction: row; }
+  .pmodal-col-img {
+    width: 200px; flex-shrink: 0;
+    border-radius: 20px 0 0 20px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .pmodal-gallery { flex: 1; display: flex; flex-direction: column; }
+  .pmodal-gallery-main { aspect-ratio: 1 !important; flex: 1; }
+  .pmodal-col-info { border-radius: 0 20px 20px 0; }
+  .pmodal-footer { border-radius: 0 0 20px 0; }
+  .pmodal-scroll { padding: 18px 18px 8px; }
+  .prod-modal-close { top: 10px; right: 10px; }
+}
+@keyframes pmFadeScale {
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
 
 /* ── Utilitários ── */
 [hidden] { display: none !important; }
