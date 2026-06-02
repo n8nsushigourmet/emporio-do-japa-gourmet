@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('produtos')
-      .select('id, categoria_id, nome, descricao, foto, tipo, preco, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de, variacoes(id, rotulo, preco)')
+      .select('id, categoria_id, nome, descricao, foto, fotos, tipo, preco, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de, variacoes(id, rotulo, preco)')
       .eq('ativo', true)
       .order('destaque', { ascending: false })
       .order('criado_em')

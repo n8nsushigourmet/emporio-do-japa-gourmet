@@ -144,6 +144,7 @@ let _cidadeAtiva     = null;
 let _cidadeAtivaNome = null;
 let _modalSaveFn  = null;
 let _modalVars    = [];
+let _modalFotos   = [];
 let _editingProdId   = null;
 let _editingCatId    = null;
 let _editingCidadeId = null;
@@ -213,7 +214,7 @@ function openModal(title, html, onSave) {
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   document.getElementById('modal-body').innerHTML = '';
-  _modalSaveFn = null; _modalVars = [];
+  _modalSaveFn = null; _modalVars = []; _modalFotos = [];
   _editingProdId = _editingCatId = _editingCidadeId = _editingBairroId = null;
 }
 
@@ -335,7 +336,8 @@ function editProduto(id) { openProdutoModal(_prodCache.get(String(id))); }
 
 function openProdutoModal(p = null) {
   _editingProdId = p ? String(p.id) : null;
-  _modalVars = p?.variacoes ? JSON.parse(JSON.stringify(p.variacoes)) : [];
+  _modalVars  = p?.variacoes ? JSON.parse(JSON.stringify(p.variacoes)) : [];
+  _modalFotos = p?.fotos?.length ? [...p.fotos] : p?.foto ? [p.foto] : [];
   const catOpts = (_cats||[]).map(c =>
     `<option value="${c.id}" ${String(p?.categoria_id) === String(c.id) ? 'selected' : ''}>${esc(c.nome)}</option>`
   ).join('');
@@ -369,27 +371,14 @@ function openProdutoModal(p = null) {
         <input type="number" id="pf-preco" value="${p?.preco??''}" step="0.01" min="0" placeholder="0,00">
       </div>
       <div class="form-group form-full">
-        <label>Foto do produto</label>
-        <div class="img-upload-wrap">
-          <div class="img-preview" id="pf-foto-preview">
-            ${p?.foto ? `<img src="${esc(p.foto)}" alt="">` : '📷'}
+        <label>Fotos do produto <span class="form-hint">(até 4 – primeira = principal)</span></label>
+        <div id="pf-fotos-grid" class="fotos-grid"></div>
+        <div id="pf-fotos-prog" style="margin-top:8px" hidden>
+          <div style="height:4px;background:var(--border2);border-radius:2px;overflow:hidden;">
+            <div id="pf-fotos-bar" style="height:100%;background:var(--ambar);width:0%;transition:width .25s;border-radius:2px;"></div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:10px;justify-content:center;">
-            <label class="img-upload-label">
-              <svg viewBox="0 0 20 20" fill="none"><path d="M4 16s.5-2 6-2 6 2 6 2M10 3v9M7 6l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              ${p?.foto ? 'Trocar foto' : 'Escolher foto'}
-              <input type="file" accept=".jpg,.jpeg,.png,.webp" onchange="pfUploadFoto(this)">
-            </label>
-            <div id="pf-foto-progress" hidden>
-              <div style="height:4px;background:var(--border2);border-radius:2px;overflow:hidden;width:160px;margin-bottom:4px;">
-                <div id="pf-foto-bar" style="height:100%;background:var(--ambar);width:0%;transition:width .25s;border-radius:2px;"></div>
-              </div>
-              <span id="pf-foto-ptxt" style="font-size:12px;color:var(--text-dim);">Enviando…</span>
-            </div>
-            <span id="pf-foto-fname" style="font-size:12px;color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-          </div>
+          <span id="pf-fotos-ptxt" style="font-size:12px;color:var(--text-dim)">Enviando…</span>
         </div>
-        <input type="hidden" id="pf-foto" value="${esc(p?.foto)}">
       </div>
       <div id="pf-vars-w" class="form-full" ${!isVar ? 'hidden':''}>
         <label style="display:block;margin-bottom:8px">Variações</label>
@@ -451,6 +440,7 @@ function openProdutoModal(p = null) {
     </div>`, saveProduto);
 
   pfRenderVars();
+  pfRenderFotos();
 }
 
 function pfTipoChange() {
@@ -477,56 +467,64 @@ function pfRenderVars() {
 function pfAddVar()     { _modalVars.push({rotulo:'',preco:0}); pfRenderVars(); }
 function pfRemoveVar(i) { _modalVars.splice(i,1); pfRenderVars(); }
 
-function pfUploadFoto(input) {
+function pfRenderFotos() {
+  const grid = document.getElementById('pf-fotos-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const url  = _modalFotos[i] || null;
+    const slot = document.createElement('div');
+    slot.className = 'foto-slot';
+    if (url) {
+      slot.innerHTML = `
+        <img src="${esc(url)}" alt="Foto ${i+1}">
+        ${i === 0 ? '<span class="foto-principal-badge">Principal</span>' : ''}
+        <button type="button" class="foto-remove" onclick="pfRemoveFoto(${i})">✕</button>`;
+    } else {
+      slot.innerHTML = `
+        <label class="foto-slot-empty">
+          <span style="font-size:22px">📷</span>
+          <input type="file" accept=".jpg,.jpeg,.png,.webp" onchange="pfUploadFotoSlot(${i},this)">
+        </label>`;
+    }
+    grid.appendChild(slot);
+  }
+}
+
+function pfRemoveFoto(idx) {
+  _modalFotos.splice(idx, 1);
+  pfRenderFotos();
+}
+
+function pfUploadFotoSlot(idx, input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) {
-    showFlash('Foto muito grande. Máximo 5MB.', 'error');
-    input.value = '';
-    return;
-  }
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    showFlash('Formato inválido. Use JPG, PNG ou WebP.', 'error');
-    input.value = '';
-    return;
-  }
-  const prog  = document.getElementById('pf-foto-progress');
-  const bar   = document.getElementById('pf-foto-bar');
-  const ptxt  = document.getElementById('pf-foto-ptxt');
-  const fname = document.getElementById('pf-foto-fname');
-  prog.hidden = false;
-  bar.style.width = '0%';
-  ptxt.textContent = 'Enviando…';
-  fname.textContent = '';
-
+  if (file.size > 5 * 1024 * 1024) { showFlash('Foto muito grande. Máximo 5MB.', 'error'); return; }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { showFlash('Formato inválido. Use JPG, PNG ou WebP.', 'error'); return; }
+  const prog = document.getElementById('pf-fotos-prog');
+  const bar  = document.getElementById('pf-fotos-bar');
+  const ptxt = document.getElementById('pf-fotos-ptxt');
+  prog.hidden = false; bar.style.width = '0%'; ptxt.textContent = 'Enviando…';
   const xhr = new XMLHttpRequest();
   xhr.open('POST', `/api/admin/produtos?action=upload&filename=${encodeURIComponent(file.name)}&mimetype=${encodeURIComponent(file.type)}`);
   xhr.setRequestHeader('Authorization', 'Bearer ' + _token);
   xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-
-  xhr.upload.onprogress = e => {
-    if (e.lengthComputable) bar.style.width = Math.round(e.loaded / e.total * 90) + '%';
-  };
-
+  xhr.upload.onprogress = e => { if (e.lengthComputable) bar.style.width = Math.round(e.loaded / e.total * 90) + '%'; };
   xhr.onload = () => {
     if (xhr.status === 200) {
       try {
         const data = JSON.parse(xhr.responseText);
-        bar.style.width = '100%';
-        ptxt.textContent = 'Concluído!';
-        document.getElementById('pf-foto').value = data.url;
-        document.getElementById('pf-foto-preview').innerHTML = `<img src="${esc(data.url)}" alt="">`;
-        fname.textContent = file.name;
+        bar.style.width = '100%'; ptxt.textContent = 'Concluído!';
+        _modalFotos[idx] = data.url;
+        pfRenderFotos();
         setTimeout(() => { prog.hidden = true; }, 2000);
       } catch { showFlash('Resposta inválida do servidor', 'error'); prog.hidden = true; }
     } else {
       let msg = 'Erro no upload';
       try { msg = JSON.parse(xhr.responseText).error || msg; } catch {}
-      showFlash(msg, 'error');
-      prog.hidden = true;
+      showFlash(msg, 'error'); prog.hidden = true;
     }
   };
-
   xhr.onerror = () => { showFlash('Sem conexão', 'error'); prog.hidden = true; };
   xhr.send(file);
 }
@@ -538,7 +536,8 @@ async function saveProduto() {
   const body = {
     nome,
     descricao:   document.getElementById('pf-desc').value.trim() || null,
-    foto:        document.getElementById('pf-foto').value.trim() || null,
+    foto:  _modalFotos[0] || null,
+    fotos: _modalFotos.filter(Boolean),
     tipo,
     categoria_id: document.getElementById('pf-cat').value || null,
     ativo:       document.getElementById('pf-ativo').checked,

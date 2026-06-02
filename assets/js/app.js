@@ -330,9 +330,10 @@ function criarCard(produto) {
 
   /* Imagem */
   const imgWrap = card.querySelector('.card-img-wrap');
-  if (produto.foto) {
+  const primeiraFoto = produto.fotos?.[0] || produto.foto || null;
+  if (primeiraFoto) {
     const img = card.querySelector('.card-img');
-    img.src = produto.foto;
+    img.src = primeiraFoto;
     img.alt = produto.nome;
   } else {
     card.querySelector('.card-img').remove();
@@ -416,6 +417,12 @@ function criarCard(produto) {
     });
   }
   addBtn.addEventListener('click', () => adicionarAoCarrinho(produto, card, addBtn));
+
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', e => {
+    if (e.target.closest('.card-add-btn, .var-btn, .peso-qty-input, .peso-hint-btn')) return;
+    abrirModalProduto(produto);
+  });
 
   return card;
 }
@@ -570,7 +577,7 @@ function renderizarItensModal() {
     const el = document.createElement('div');
     el.className = 'cart-item';
 
-    const imgSrc = item.produto.foto || '';
+    const imgSrc = item.produto.fotos?.[0] || item.produto.foto || '';
     const imgEl = imgSrc
       ? `<img class="cart-item-img" src="${imgSrc}" alt="${item.produto.nome}" loading="lazy">`
       : `<div class="cart-item-img" style="display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--creme-escuro)">${item.produto.emoji || '🍱'}</div>`;
@@ -781,6 +788,200 @@ async function finalizarPedido() {
   window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
+/* ── Modal de produto ── */
+let _modalProduto = null;
+let _pmFotoAtiva  = 0;
+let _pmTouchX     = 0;
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function abrirModalProduto(produto) {
+  _modalProduto = produto;
+  _pmFotoAtiva  = 0;
+  const overlay = $('#prod-modal-overlay');
+  const body    = $('#prod-modal-body');
+
+  const fotos = produto.fotos?.length ? produto.fotos : produto.foto ? [produto.foto] : [];
+
+  const galHtml = fotos.length
+    ? `<div class="pmodal-gallery">
+         <div class="pmodal-gallery-main" id="pm-gal-main">
+           <img id="pm-foto-main" src="${escHtml(fotos[0])}" alt="${escHtml(produto.nome)}">
+         </div>
+         ${fotos.length > 1
+           ? `<div class="pmodal-thumbs" id="pm-thumbs">${fotos.map((u, i) =>
+               `<button class="pmodal-thumb${i===0?' active':''}" data-idx="${i}"><img src="${escHtml(u)}" alt=""></button>`
+             ).join('')}</div>`
+           : ''}
+       </div>`
+    : `<div class="pmodal-gallery">
+         <div class="pmodal-gallery-main pmodal-gallery-placeholder">
+           <span>${produto.emoji || '🍱'}</span>
+         </div>
+       </div>`;
+
+  let selHtml = '';
+  if (produto.tipo === 'variacao' && produto.variacoes?.length) {
+    selHtml = `<div class="pmodal-vars" id="pm-vars">${produto.variacoes.map((v, i) =>
+      `<button class="var-btn${i===0?' selected':''}" data-var-id="${v.id}" data-preco="${v.preco}">${escHtml(v.rotulo)}</button>`
+    ).join('')}</div>`;
+  } else if (produto.tipo === 'peso') {
+    const { suffix } = parsePesoUnit(produto.unidade_label);
+    const min = produto.quantidade_minima || 1;
+    const step = produto.multiplo_de || 1;
+    selHtml = `<div class="pmodal-peso">
+      <div class="peso-row">
+        <input type="number" class="peso-qty-input" id="pm-qty" min="${min}" step="${step}" placeholder="${min}" aria-label="Quantidade">
+        <span class="peso-unit">${suffix}</span>
+      </div>
+      <div class="peso-hint" id="pm-hint" style="display:none"></div>
+    </div>`;
+  }
+
+  let precoHtml;
+  if (produto.tipo === 'peso') {
+    precoHtml = `<div class="pmodal-price-unit">${brl(produto.preco_unidade)}/${produto.unidade_label||'un'}</div>`;
+  } else if (produto.promo) {
+    precoHtml = `<div class="pmodal-price"><span class="price-original">${brl(produto.preco_original)}</span><span class="pmodal-promo-val">${brl(produto.preco_promo)}</span></div>`;
+  } else if (produto.tipo === 'variacao') {
+    precoHtml = `<div class="pmodal-price" id="pm-price">${brl(produto.variacoes?.[0]?.preco)}</div>`;
+  } else {
+    precoHtml = `<div class="pmodal-price">${brl(produto.preco)}</div>`;
+  }
+
+  body.innerHTML = `
+    ${galHtml}
+    <div class="pmodal-info">
+      <div class="pmodal-head">
+        <h2 class="pmodal-nome">${escHtml(produto.nome)}</h2>
+        ${produto.promo ? '<span class="badge badge-promo">Promoção</span>' : ''}
+      </div>
+      ${produto.descricao ? `<p class="pmodal-desc">${escHtml(produto.descricao)}</p>` : ''}
+      ${produto.categoria_nome ? `<div class="pmodal-cat">${escHtml(produto.categoria_nome)}</div>` : ''}
+      ${selHtml}
+      <div class="pmodal-footer">
+        ${precoHtml}
+        <button class="pmodal-add-btn" id="pm-add-btn"${produto.tipo === 'peso' ? ' disabled' : ''}>Adicionar ao carrinho</button>
+      </div>
+    </div>`;
+
+  if (produto.tipo === 'variacao') {
+    $$('#pm-vars .var-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('#pm-vars .var-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        const priceEl = $('#pm-price');
+        if (priceEl) priceEl.textContent = brl(Number(btn.dataset.preco));
+      });
+    });
+  }
+
+  if (produto.tipo === 'peso') {
+    const input  = $('#pm-qty');
+    const hintEl = $('#pm-hint');
+    const addBtn = $('#pm-add-btn');
+    const { suffix: sfx } = parsePesoUnit(produto.unidade_label);
+    const step = produto.multiplo_de || 1;
+    input.addEventListener('input', () => {
+      const qty = parseFloat(input.value);
+      const min = produto.quantidade_minima || 1;
+      const max = produto.quantidade_maxima;
+      const valido = qty && qty >= min && (!max || qty <= max);
+      addBtn.disabled = !valido;
+      if (valido && step > 1 && qty % step !== 0) {
+        const sugerido = Math.ceil(qty / step) * step;
+        hintEl.innerHTML = `💡 Sugerimos arredondar para ${sugerido}${sfx} <button class="peso-hint-btn" type="button">Usar ${sugerido}${sfx}</button>`;
+        hintEl.style.display = '';
+        hintEl.querySelector('.peso-hint-btn').addEventListener('click', () => {
+          input.value = sugerido;
+          input.dispatchEvent(new Event('input'));
+        });
+      } else {
+        hintEl.style.display = 'none';
+      }
+    });
+  }
+
+  $('#pm-add-btn').addEventListener('click', pmAdicionarCarrinho);
+
+  if (fotos.length > 1) {
+    $$('#pm-thumbs .pmodal-thumb').forEach(btn => {
+      btn.addEventListener('click', () => pmTrocarFoto(Number(btn.dataset.idx), fotos));
+    });
+    pmSetupSwipe(fotos);
+  }
+
+  overlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharModalProduto() {
+  $('#prod-modal-overlay').hidden = true;
+  document.body.style.overflow = '';
+  _modalProduto = null;
+}
+
+function pmTrocarFoto(idx, fotos) {
+  _pmFotoAtiva = idx;
+  const img = $('#pm-foto-main');
+  if (img) img.src = fotos[idx];
+  $$('#pm-thumbs .pmodal-thumb').forEach(t => t.classList.toggle('active', Number(t.dataset.idx) === idx));
+}
+
+function pmAdicionarCarrinho() {
+  const produto = _modalProduto;
+  if (!produto) return;
+  let variacao = null, preco;
+
+  if (produto.tipo === 'variacao') {
+    const sel = $('#pm-vars .var-btn.selected') || $('#pm-vars .var-btn');
+    variacao = produto.variacoes.find(v => String(v.id) === sel?.dataset.varId) || produto.variacoes[0];
+    preco = variacao.preco;
+  } else if (produto.tipo === 'peso') {
+    const input = $('#pm-qty');
+    const qty = parseFloat(input?.value);
+    const min = produto.quantidade_minima || 1;
+    const max = produto.quantidade_maxima;
+    if (!qty || qty < min || (max && qty > max)) return;
+    const { base, suffix } = parsePesoUnit(produto.unidade_label);
+    preco = (qty / base) * produto.preco_unidade;
+    variacao = { rotulo: qty + suffix };
+  } else if (produto.promo) {
+    preco = produto.preco_promo;
+  } else {
+    preco = produto.preco;
+  }
+
+  const existente = state.cart.find(item =>
+    item.produto.id === produto.id &&
+    (produto.tipo === 'peso'
+      ? item.variacao?.rotulo === variacao?.rotulo
+      : item.variacao?.id === variacao?.id)
+  );
+  if (existente) existente.quantidade++;
+  else state.cart.push({ id: nextId(), produto, variacao, preco, quantidade: 1 });
+
+  atualizarUICarrinho();
+  fecharModalProduto();
+  abrirModal();
+}
+
+function pmSetupSwipe(fotos) {
+  const main = $('#pm-gal-main');
+  if (!main) return;
+  main.addEventListener('touchstart', e => { _pmTouchX = e.touches[0].clientX; }, { passive: true });
+  main.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - _pmTouchX;
+    if (Math.abs(dx) < 40) return;
+    const next = dx < 0
+      ? Math.min(_pmFotoAtiva + 1, fotos.length - 1)
+      : Math.max(_pmFotoAtiva - 1, 0);
+    if (next !== _pmFotoAtiva) pmTrocarFoto(next, fotos);
+  }, { passive: true });
+}
+
 /* ── Busca ── */
 const onBusca = debounce(q => {
   state.busca = q.trim();
@@ -810,10 +1011,21 @@ function iniciarEventos() {
   /* Barra flutuante: abrir modal */
   $('#cart-float-btn').addEventListener('click', abrirModal);
 
-  /* Fechar modal */
+  /* Fechar modal carrinho */
   $('#modal-close').addEventListener('click', fecharModal);
   $('#modal-backdrop').addEventListener('click', fecharModal);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+  /* Fechar modal produto */
+  $('#prod-modal-close').addEventListener('click', fecharModalProduto);
+  $('#prod-modal-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) fecharModalProduto();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('#prod-modal-overlay').hidden) fecharModalProduto();
+    else fecharModal();
+  });
 
   /* Tipo de entrega */
   $$('.entrega-tipo-btn').forEach(btn => {

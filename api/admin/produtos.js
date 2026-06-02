@@ -89,12 +89,12 @@ const handler = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, variacoes,
+      const { nome, descricao, foto, fotos, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, variacoes,
               preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de } = body
       const { data: p, error } = await supabase
         .from('produtos')
         .insert({
-          nome, descricao: descricao || null, foto: foto || null, tipo: tipo || 'simples',
+          nome, descricao: descricao || null, foto: foto || null, fotos: fotos || [], tipo: tipo || 'simples',
           preco: preco || null, categoria_id: categoria_id || null,
           destaque: !!destaque, ativo: ativo !== false, promo: !!promo,
           preco_original: preco_original || null, preco_promo: preco_promo || null,
@@ -125,12 +125,12 @@ const handler = async (req, res) => {
 
     if (req.method === 'PUT') {
       const id = req.query.id
-      const { nome, descricao, foto, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, variacoes,
+      const { nome, descricao, foto, fotos, tipo, preco, categoria_id, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, variacoes,
               preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de } = body
       const { error } = await supabase
         .from('produtos')
         .update({
-          nome, descricao: descricao || null, foto: foto || null, tipo: tipo || 'simples',
+          nome, descricao: descricao || null, foto: foto || null, fotos: fotos || [], tipo: tipo || 'simples',
           preco: preco || null, categoria_id: categoria_id || null,
           destaque: !!destaque, ativo: ativo !== false, promo: !!promo,
           preco_original: preco_original || null, preco_promo: preco_promo || null,
