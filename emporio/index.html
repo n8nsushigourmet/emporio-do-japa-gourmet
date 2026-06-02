@@ -585,6 +585,7 @@ async function toggleDestaque(id, el) {
   if (!p) return;
   const novoVal = !p.destaque;
   const ok = await http('PATCH', `/api/admin/produtos?id=${id}`, { destaque: novoVal });
+  console.log('[toggleDestaque]', id, novoVal, ok);
   if (ok === null) return;
   p.destaque = novoVal;
   el.style.opacity = novoVal ? '1' : '.3';
@@ -597,6 +598,7 @@ async function toggleAtivo(id, el) {
   if (!p) return;
   const novoVal = !p.ativo;
   const ok = await http('PATCH', `/api/admin/produtos?id=${id}`, { ativo: novoVal });
+  console.log('[toggleAtivo]', id, novoVal, ok);
   if (ok === null) return;
   p.ativo = novoVal;
   el.className = `badge ${novoVal ? 'badge-ativo' : 'badge-inativo'}`;

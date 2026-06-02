@@ -69,7 +69,7 @@ const handler = async (req, res) => {
   // ── CRUD de produtos ──────────────────────────────────
   // bodyParser desabilitado globalmente — parseia JSON manualmente
   let body = {}
-  if (req.method === 'POST' || req.method === 'PUT') {
+  if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
     try {
       const buf = await readBody(req)
       body = JSON.parse(buf.toString())
@@ -118,8 +118,10 @@ const handler = async (req, res) => {
     if (req.method === 'PATCH') {
       const id = req.query.id
       if (!id) return res.status(400).json({ error: 'id obrigatório' })
+      console.log('[PATCH produto]', id, body)
       const { error } = await supabase.from('produtos').update(body).eq('id', id)
-      if (error) throw error
+      if (error) { console.error('[PATCH erro]', error); throw error }
+      console.log('[PATCH ok]', id)
       return res.json({ ok: true })
     }
 
