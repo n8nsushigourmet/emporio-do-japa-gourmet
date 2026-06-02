@@ -12,6 +12,7 @@ Loja virtual de ingredientes e acessórios para fazer sushi em casa, operada pel
 |---|---|
 | Loja (cliente) | `emporio.sushigourmet.com.br` |
 | Painel admin | `emporio.sushigourmet.com.br/emporio` |
+| Senha admin | `SushiGourmet@2025` (variável `ADMIN_TOKEN`) |
 | Repositório GitHub | `https://github.com/n8nsushigourmet/emporio-do-japa-gourmet` |
 
 ---
@@ -20,38 +21,47 @@ Loja virtual de ingredientes e acessórios para fazer sushi em casa, operada pel
 
 | Camada | Tecnologia |
 |---|---|
-| Front-end | HTML5 + CSS3 + JS vanilla (zero frameworks) |
-| Back-end | PHP (serverless via Vercel + `vercel-php`) |
-| Banco de dados | PostgreSQL — Supabase |
-| Hospedagem | Vercel (frontend + PHP serverless) |
-| Repositório | GitHub |
+| Front-end loja | HTML5 + CSS3 + JS vanilla (zero frameworks) |
+| Front-end admin | HTML5 + CSS3 + JS vanilla (SPA single-file `emporio/index.html`) |
+| Back-end | Node.js — Vercel Serverless Functions (`api/` directory) |
+| Banco de dados | PostgreSQL via **Supabase JS SDK** (`@supabase/supabase-js`) |
+| Storage de imagens | Supabase Storage — bucket `produtos` (público) |
+| Hospedagem | Vercel (plano Hobby — limite de **12 serverless functions**) |
+| Repositório | GitHub (`n8nsushigourmet/emporio-do-japa-gourmet`) |
 | Fontes | Google Fonts — Cormorant Garamond + DM Sans |
 
-**Requisitos de performance:** meta 90+ PageSpeed. Zero dependências externas além das fontes. Mobile-first, responsivo em 4 breakpoints.
+> **Nota:** A stack foi migrada de PHP + pg direto para Node.js + Supabase JS SDK. Não há mais arquivos `.php` nem conexão PDO/pg direta.
 
 ---
 
 ## Infraestrutura e variáveis de ambiente
 
-### Variáveis configuradas (`.env.local` — nunca commitar)
+### Variáveis no `.env.local` (nunca commitar) e na Vercel
 
-| Variável | Valor |
+| Variável | Descrição |
 |---|---|
-| `DB_HOST` | `aws-1-sa-east-1.pooler.supabase.com` |
-| `DB_PORT` | `5432` |
-| `DB_NAME` | `postgres` |
-| `DB_USER` | `postgres.tecpmlrhrbvjvqevdcke` |
-| `DB_PASS` | *(ver `.env.local`)* |
-| `GITHUB_TOKEN` | *(ver `.env.local`)* |
-| `VERCEL_TOKEN` | *(a configurar)* |
+| `SUPABASE_URL` | `https://ladimbcsqhjajymvafqc.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (ignora RLS, usado nas serverless functions) |
+| `SUPABASE_ANON_KEY` | Anon key (leitura pública, não usado diretamente — referência) |
+| `ADMIN_TOKEN` | `SushiGourmet@2025` — senha do painel admin (Bearer token) |
+| `VERCEL_TOKEN` | Token pessoal da Vercel (usado para atualizações via API) |
 
 O arquivo `.env.example` na raiz documenta as variáveis. O `.env.local` real está no `.gitignore`.
 
 ### Supabase
 
-- **Project ID:** `tecpmlrhrbvjvqevdcke`
+- **Project ID:** `ladimbcsqhjajymvafqc`
+- **Nome do projeto:** Empório do Japa - Oficial
+- **Organização:** Emporio do Japa
+- **Conta:** `jaysondainese@gmail.com`
 - **Região:** `sa-east-1` (São Paulo)
-- **Schema:** executado em 2026-05-29 — todas as tabelas criadas com dados iniciais
+- **Schema de referência:** `supabase/schema-completo.sql` (commitado no repo)
+
+### Vercel
+
+- **Projeto:** `emporio-do-japa-gourmet` (`prj_qQsJJceHWfhBFXGSxjv4W7GCTKfm`)
+- **Deploy automático:** push para `main` → Vercel detecta e deploya
+- **Limite do plano Hobby:** 12 serverless functions (cada arquivo em `api/` conta como 1)
 
 ---
 
@@ -62,12 +72,19 @@ O arquivo `.env.example` na raiz documenta as variáveis. O `.env.local` real es
 --creme-escuro:   #EDE6D6   /* superfícies secundárias */
 --marrom:         #6B4226   /* cor da logo */
 --marrom-escuro:  #4A2C18   /* header, botões primários */
---ambar:          #C8920A   /* cor de ação, badges */
---ambar-claro:    #EF9F27   /* destaques, preços em promoção */
+--ambar:          #C8920A   /* cor de ação, badges, preços promo */
+--ambar-claro:    #EF9F27   /* destaques */
 --ambar-fundo:    #FAEEDA   /* fundo de badges e alertas */
 --preto:          #1A1209   /* textos sobre fundo âmbar */
 --texto:          #2C1A0E   /* texto principal */
 --texto-suave:    #7A5C42   /* texto secundário */
+```
+
+Admin (`admin.css`):
+```css
+--bg:       #0A0604  --bg-card:  #140C06  --bg-hover: #1C1008
+--border:   #2A1A0C  --border2:  #3A2510  --ambar:    #C8920A
+--text:     #F5EDD8  --text-dim: #8A6848  --red:      #c0392b
 ```
 
 ---
@@ -90,19 +107,178 @@ O arquivo `.env.example` na raiz documenta as variáveis. O `.env.local` real es
 
 ---
 
+## Banco de dados — tabelas atuais
+
+### `categorias`
+```
+id, nome, slug, ordem, ativo, criado_em
+```
+
+### `produtos`
+```
+id, categoria_id, nome, descricao,
+foto          VARCHAR(500)   -- foto principal (legado / compat)
+fotos         JSONB          -- galeria de até 4 fotos (array de URLs)
+tipo          VARCHAR(20)    -- 'simples' | 'variacao' | 'peso'
+preco         DECIMAL(10,2)
+destaque      BOOLEAN
+ativo         BOOLEAN
+promo         BOOLEAN
+preco_original, preco_promo, promo_inicio (DATE), promo_fim (DATE)
+preco_unidade DECIMAL(10,2)  -- preço por unidade (ex: por 100g)
+unidade_label VARCHAR(20)    -- ex: '100g', 'kg', 'un'
+quantidade_minima INT
+quantidade_maxima INT
+multiplo_de   INT            -- ex: 50 → quantidades múltiplas de 50g
+criado_em     TIMESTAMPTZ
+```
+
+### `variacoes`
+```
+id, produto_id, rotulo, preco
+```
+
+### `kits`
+```
+id, nome, descricao, foto, preco, ativo, criado_em
+```
+
+### `kit_itens`
+```
+id, kit_id, produto_id, variacao_id, quantidade
+```
+
+### `cidades`
+```
+id, nome, ativo
+```
+
+### `bairros`
+```
+id, cidade_id, nome, frete, ativo
+```
+
+### `pedidos`
+```
+id, criado_em, tipo_entrega, cidade, bairro,
+subtotal, frete, total,
+status   VARCHAR(20)  -- 'novo' | 'em_preparo' | 'pronto' | 'entregue'
+whatsapp_msg
+```
+
+### `pedido_itens`
+```
+id, pedido_id, produto_id, nome, variacao_label, preco, quantidade
+```
+
+> **RLS:** habilitado em todas as tabelas. As serverless functions usam `SUPABASE_SERVICE_ROLE_KEY` que ignora RLS automaticamente.
+
+> **Storage:** bucket `produtos` (público). URLs no formato `https://ladimbcsqhjajymvafqc.supabase.co/storage/v1/object/public/produtos/<filename>`.
+
+---
+
+## Serverless functions (`api/`)
+
+| Arquivo | Método | Função |
+|---|---|---|
+| `api/_db.js` | — | Instância compartilhada do Supabase client |
+| `api/produtos.js` | GET | Produtos ativos + variações (público) |
+| `api/categorias.js` | GET | Categorias (público) |
+| `api/cidades.js` | GET | Cidades ativas (público) |
+| `api/bairros.js` | GET `?cidade_id=X` | Bairros ativos com frete (público) |
+| `api/pedidos.js` | POST | Registrar pedido + itens (público) |
+| `api/admin/_auth.js` | — | Middleware de autenticação (Bearer ADMIN_TOKEN) |
+| `api/admin/produtos.js` | GET/POST/PUT/PATCH/DELETE + `?action=upload` | CRUD de produtos + upload de foto |
+| `api/admin/categorias.js` | GET/POST/PUT/DELETE | CRUD de categorias |
+| `api/admin/pedidos.js` | GET/PATCH | Listagem e troca de status de pedidos |
+| `api/admin/fretes.js` | GET/POST/PUT/DELETE | CRUD de cidades e bairros |
+| `api/admin/kits.js` | GET/POST/PUT/DELETE | CRUD de kits |
+
+> **Limite Hobby:** 12 functions = 11 arquivos acima + 1 reserva.  
+> `_db.js` e `_auth.js` são módulos auxiliares (não contam como functions separadas).
+
+---
+
+## Tipos de produto
+
+### `simples`
+Produto com preço fixo único.
+
+### `variacao`
+Produto com variações de tamanho/porção. Cada variação tem rótulo e preço próprio.
+Ex: Salmão Fresco → [100g R$38] [200g R$72] [500g R$170]
+
+### `peso`
+Produto vendido por peso/quantidade arbitrária.
+- `preco_unidade`: preço por `unidade_label` (ex: R$28,00/100g)
+- `quantidade_minima`: mínimo aceitável
+- `quantidade_maxima`: máximo aceitável (opcional)
+- `multiplo_de`: sugestão de arredondamento (ex: 50 → múltiplos de 50g)
+- Hint suave ao detectar valor não-múltiplo: "💡 Sugerimos arredondar para Xg"
+
+---
+
+## Funcionalidades implementadas
+
+### Loja do cliente (`index.html` + `assets/js/app.js`)
+
+- Header: logo + busca accent-insensitive + botão carrinho com badge
+- Hero: foto de capa, título tipográfico, tags de horário e localização
+- Navegação de categorias: pills deslizáveis, sticky
+- Grid de produtos responsivo (2–5 colunas)
+- Card de produto:
+  - Foto (usa `fotos[0]` ou `foto` como fallback)
+  - Badges: Promoção, Kit, Destaque
+  - Seletor de variação (pills inline no card)
+  - Input de quantidade para produtos `peso`
+  - Hint de arredondamento para múltiplos
+  - Botão "+" adicionar ao carrinho
+  - Clique no card abre modal de produto
+- Modal de produto (mobile-first):
+  - **Mobile (≤480px):** bottom sheet 85dvh, foto 16/9, variações em pills antes do preço, botão fixo 52px no rodapé, swipe down no handle fecha
+  - **Desktop (769px+):** modal 480px centralizado, foto à esquerda, info à direita, animação fade+scale
+  - Pills de variação estilo ML/Shopee: `[rótulo  R$ preço]`, selecionado = marrom escuro + creme
+  - Preço no rodapé do sheet atualiza ao trocar variação
+- Carrinho:
+  - Barra flutuante ao adicionar primeiro item
+  - Modal com lista de itens, controle +/−/remover
+  - Seção de entrega: Retirada / Domicílio
+  - Select dinâmico de cidades e bairros (API)
+  - Totais em tempo real
+  - Finalizar pelo WhatsApp (registra pedido na API antes de abrir o WA)
+- Fallback demo: se API falhar, exibe dados demo locais (Promise.allSettled)
+
+### Painel admin (`emporio/index.html`)
+
+- Autenticação: token Bearer (`ADMIN_TOKEN`) via header Authorization
+- SPA: navegação por seções sem reload (hash-based)
+- Tema escuro
+- **Produtos:**
+  - Listagem com busca, filtro por categoria
+  - Toggle Ativo/Inativo clicável na tabela (PATCH imediato)
+  - Toggle Destaque (⭐) clicável na tabela (PATCH imediato)
+  - Badge "Promo expirada" (data atual > `promo_fim`)
+  - Formulário completo: nome, descrição, categoria, tipo, preços
+  - Galeria de até 4 fotos: upload por slot, foto principal (slot 0), remover por slot
+  - Upload via `?action=upload` → Supabase Storage → URL salva no JSONB `fotos`
+  - Variações dinâmicas: adicionar/remover rótulo+preço
+  - Campos de promoção com datas início/fim
+  - Campos específicos para tipo `peso`: preco_unidade, unidade_label, min/max/multiplo
+- **Categorias:** CRUD básico
+- **Pedidos:** listagem, troca de status
+- **Fretes:** CRUD de cidades e bairros
+
+---
+
 ## Entrega e frete
 
-O sistema de frete é dinâmico, gerenciado pelo painel admin em **Fretes**.
-
 ### Fluxo no carrinho
+1. Cliente escolhe **Retirada na loja** ou **Entrega em domicílio**
+2. Se domicílio: seleciona cidade → bairro (carregado via API)
+3. Frete aparece automaticamente com o bairro
+4. Total = subtotal + frete
 
-1. O cliente escolhe **Retirada na loja** ou **Entrega em domicílio**
-2. Se domicílio: seleciona a **cidade** (carregada via `GET /api/cidades.php`)
-3. Após escolher a cidade: seleciona o **bairro** (carregado via `GET /api/bairros.php?cidade_id=X`)
-4. O valor do frete aparece automaticamente ao selecionar o bairro
-5. Total = subtotal + frete do bairro
-
-### Dados padrão cadastrados
+### Dados padrão
 
 | Cidade | Bairro | Frete |
 |---|---|---|
@@ -114,7 +290,7 @@ O sistema de frete é dinâmico, gerenciado pelo painel admin em **Fretes**.
 | Lacerdina | Centro | R$ 12,00 |
 
 ### Retirada
-**Grátis** — Rua Doutor Olímpio Teixeira, 290, Centro, Carangola/MG  
+**Grátis** — Rua Doutor Olímpio Teixeira, 290, Centro, Carangola/MG
 **Horário:** segunda a sábado, 17h às 23h
 
 ### WhatsApp
@@ -122,131 +298,17 @@ O sistema de frete é dinâmico, gerenciado pelo painel admin em **Fretes**.
 
 ---
 
-## Categorias de produtos
+## Categorias cadastradas
 
-1. Kits Sushi Preguiçoso
-2. Peixes e Frutos do Mar
-3. Algas
-4. Temperos e Molhos
-5. Arroz e Bases
-6. Cream Cheese e Laticínios
-7. Acessórios
-
----
-
-## Funcionalidades — Loja do cliente (`index.html`)
-
-### Cabeçalho
-- Logo circular do Sushi Gourmet (fundo creme, borda âmbar)
-- Barra de busca — accent-insensitive (normalização NFD, busca "salmao" encontra "Salmão")
-- Botão do carrinho com badge de quantidade
-
-### Hero
-- Foto de capa com overlay escuro
-- Eyebrow, título tipográfico (Cormorant itálico)
-- Tags de horário e localização
-
-### Navegação de categorias
-- Pills horizontais deslizáveis, sticky abaixo do header
-- Filtros: Todos, ⭐ Destaques, + cada categoria com produtos ativos
-
-### Cards de produto
-- Foto WebP (lazy loading)
-- Nome, descrição curta
-- Seletor de variação quando aplicável (ex: 100g / 200g / 500g)
-- Preço normal ou preço riscado + preço promocional
-- Badges: Promoção (âmbar) e Kit (marrom escuro)
-- Botão "+" para adicionar ao carrinho
-
-### Carrinho e checkout
-
-**Barra flutuante** — aparece ao adicionar o primeiro item, mostra subtotal  
-**Modal de pedido:**
-- Lista de itens com controle de quantidade (+/−/remover)
-- Seção de entrega em 2 passos:
-  - Botões **Retirada na loja** / **Entrega em domicílio**
-  - Se retirada: exibe endereço e horário
-  - Se domicílio: select de cidade → select de bairro (dinâmico via API) → frete exibido automaticamente
-- Totais: subtotal / frete / total (atualizados em tempo real)
-- Botão "Finalizar pelo WhatsApp"
-
-### Mensagem WhatsApp gerada (exemplos)
-
-**Retirada:**
-```
-🍣 Pedido — Empório Japa Gourmet
-
-• Salmão Fresco (200g) x1 — R$ 72,00
-• Alga Nori x2 — R$ 48,00
-
-*Subtotal:* R$ 120,00
-*Entrega:* Retirada na loja (Grátis)
-*Total:* R$ 120,00
-
-📍 Retirada: Rua Dr. Olímpio Teixeira, 290, Centro, Carangola/MG
-🕐 Seg–Sáb · 17h às 23h
-```
-
-**Entrega:**
-```
-🍣 Pedido — Empório Japa Gourmet
-
-• Salmão Fresco (200g) x1 — R$ 72,00
-
-*Subtotal:* R$ 72,00
-*Entrega:* Centro, Carangola — R$ 7,00
-*Total:* R$ 79,00
-```
-
----
-
-## Funcionalidades — Painel admin (`/emporio`)
-
-### Autenticação
-- Login com usuário + senha (bcrypt)
-- Sessão PHP com timeout de 8 horas
-- CSRF token em todos os formulários POST
-- Tema escuro: fundo `#0A0604`, destaques âmbar
-
-### Páginas do painel
-
-| Rota | Função |
-|---|---|
-| `/emporio/` | Login / logout |
-| `/emporio/dashboard.php` | Resumo de vendas e pedidos recentes |
-| `/emporio/produtos.php` | CRUD de produtos (foto, preços, promoção, variações) |
-| `/emporio/categorias.php` | CRUD de categorias com reordenação |
-| `/emporio/kits.php` | Montador de kits (produtos agrupados) |
-| `/emporio/pedidos.php` | Lista de pedidos, troca de status |
-| `/emporio/importar.php` | Importação em massa via CSV |
-| `/emporio/frete.php` | Gestão de cidades e bairros com fretes |
-| `/emporio/setup.php` | Criação do primeiro usuário admin |
-
-### Cadastro de produtos
-
-| Campo | Tipo |
-|---|---|
-| Nome | texto |
-| Descrição | textarea |
-| Categoria | select |
-| Foto | upload → converte para WebP 900px max, 5MB max |
-| Tipo | `simples` ou `variacao` |
-| Preço (simples) | decimal |
-| Variações | lista: rótulo + preço (ex: "200g — R$ 72,00") |
-| Ativo | toggle |
-| Destaque | toggle |
-| Em promoção | toggle + preço original + preço promo + data início/fim |
-
-### Gestão de fretes
-
-- **Cidades:** criar, ativar/desativar, excluir
-- **Bairros:** criar por cidade, definir valor de frete, ativar/desativar, editar
-- Cidades/bairros inativos não aparecem nos selects da loja
-
-### Gestão de pedidos
-- Lista cronológica de pedidos recebidos
-- Troca de status: `novo` → `em_preparo` → `pronto` → `entregue`
-- Exibe cidade, bairro e frete de cada pedido
+| Ordem | Nome | Slug |
+|---|---|---|
+| 1 | Kits Sushi Preguiçoso | `kits` |
+| 2 | Peixes e Frutos do Mar | `peixes` |
+| 3 | Algas | `algas` |
+| 4 | Temperos e Molhos | `temperos` |
+| 5 | Arroz e Bases | `arroz` |
+| 6 | Cream Cheese e Laticínios | `laticinios` |
+| 7 | Acessórios | `acessorios` |
 
 ---
 
@@ -254,106 +316,62 @@ O sistema de frete é dinâmico, gerenciado pelo painel admin em **Fretes**.
 
 ```
 emporio-do-japa-gourmet/
-├── index.html                  ← loja do cliente
-├── vercel.json                 ← configuração Vercel + PHP runtime
+├── index.html                    ← loja do cliente
+├── vercel.json                   ← rewrites Vercel
+├── package.json                  ← dependência: @supabase/supabase-js
 ├── .gitignore
-├── .env.example                ← modelo das variáveis de ambiente
-├── .env.local                  ← variáveis reais (não commitado)
-├── .htaccess                   ← HTTPS, segurança, cache (Apache/Hostinger)
+├── .env.example
+├── .env.local                    ← variáveis reais (não commitado)
 │
 ├── api/
-│   ├── produtos.php            ← GET → JSON com produtos ativos + variações
-│   ├── categorias.php          ← GET → JSON com categorias
-│   ├── cidades.php             ← GET → JSON com cidades ativas
-│   ├── bairros.php             ← GET ?cidade_id=X → JSON com bairros + fretes
-│   ├── pedido.php              ← POST → registra pedido no banco
-│   └── emporio/                ← painel admin (movido para cá em 2026-05-29)
-│       ├── index.php           ← login
-│       ├── dashboard.php
-│       ├── produtos.php
-│       ├── categorias.php
-│       ├── kits.php
-│       ├── pedidos.php
-│       ├── importar.php
-│       ├── frete.php           ← gestão de cidades e bairros
-│       ├── setup.php           ← criação do primeiro admin
-│       ├── logout.php
-│       └── includes/
-│           ├── auth.php        ← sessão, CSRF, flash messages
-│           ├── db.php          ← PDO PostgreSQL (usa env vars)
-│           ├── helpers.php     ← h(), brl(), uploadImagem(), promoAtiva()…
-│           ├── head.php        ← layout: sidebar + topbar
-│           └── foot.php        ← fechamento do layout
+│   ├── _db.js                    ← Supabase client singleton
+│   ├── produtos.js               ← GET público
+│   ├── categorias.js             ← GET público
+│   ├── cidades.js                ← GET público
+│   ├── bairros.js                ← GET ?cidade_id=X público
+│   ├── pedidos.js                ← POST público
+│   └── admin/
+│       ├── _auth.js              ← middleware Bearer token
+│       ├── produtos.js           ← CRUD + upload (bodyParser: false)
+│       ├── categorias.js         ← CRUD
+│       ├── pedidos.js            ← GET + PATCH status
+│       ├── fretes.js             ← CRUD cidades e bairros
+│       └── kits.js               ← CRUD kits
 │
 ├── assets/
 │   ├── css/
-│   │   ├── style.css           ← loja do cliente
-│   │   └── admin.css           ← painel admin (tema escuro)
-│   └── js/
-│       └── app.js              ← toda a lógica da loja (estado, render, carrinho)
+│   │   ├── style.css             ← loja (variáveis CSS, mobile-first)
+│   │   └── admin.css             ← painel admin (tema escuro)
+│   ├── js/
+│   │   └── app.js                ← toda a lógica da loja
+│   └── img/
+│       └── logo-sushi-gourmet.jpg.jpeg
 │
-├── uploads/
-│   ├── logo-sushi-gourmet.png.jpeg   ← logo circular do header
-│   └── produtos/               ← fotos WebP geradas pelo admin
-│       └── .htaccess
+├── emporio/
+│   └── index.html                ← painel admin (SPA)
 │
-└── database/
-    ├── schema.sql              ← schema MySQL (referência / Hostinger)
-    └── schema-postgres.sql     ← schema PostgreSQL (Supabase — executado)
+└── supabase/
+    ├── schema.sql                ← schema original (referência)
+    └── schema-completo.sql       ← schema atual completo (migração)
 ```
 
 ---
 
-## Banco de dados — tabelas
+## Pendências / roadmap
 
-```
-usuarios         (id, usuario, senha_hash, nome, criado_em)
-categorias       (id, nome, slug, ordem, ativo)
-produtos         (id, categoria_id, nome, descricao, foto, tipo, preco,
-                  destaque, ativo, promo, preco_original, preco_promo,
-                  promo_inicio, promo_fim, criado_em)
-variacoes        (id, produto_id, rotulo, preco)
-kits             (id, nome, descricao, foto, preco, ativo, criado_em)
-kit_itens        (id, kit_id, produto_id, variacao_id, quantidade)
-pedidos          (id, criado_em, tipo_entrega, cidade, bairro,
-                  subtotal, frete, total, status, whatsapp_msg)
-pedido_itens     (id, pedido_id, produto_id, variacao_id, nome,
-                  variacao_label, preco, quantidade)
-cidades          (id, nome, ativo)
-bairros          (id, cidade_id, nome, frete, ativo)
-```
-
----
-
-## Deploy — GitHub + Vercel + Supabase
-
-### Status atual (2026-05-29)
-
-| Etapa | Status |
+| Funcionalidade | Status |
 |---|---|
-| Repositório GitHub | ✅ `github.com/n8nsushigourmet/emporio-do-japa-gourmet` |
-| Schema Supabase | ✅ Executado — 10 tabelas + dados iniciais |
-| Vercel — projeto | ⏳ Aguardando token da Vercel |
-| Vercel — env vars | ⏳ Aguardando deploy |
-| Primeiro usuário admin | ⏳ Após deploy: acessar `/emporio/setup.php` |
-
-### Próximos deploys (fluxo normal)
-
-Com tudo configurado, o fluxo é totalmente automático:
-1. Faça alterações no código
-2. Claude Code faz `git push`
-3. Vercel detecta o push e deploya automaticamente
-
-### Criar o primeiro usuário admin
-
-Após o primeiro deploy bem-sucedido, acesse:
-```
-https://SEU_DOMINIO.vercel.app/emporio/setup.php
-```
-
-### Limitação de uploads no Vercel
-
-O Vercel é serverless — **arquivos enviados pelo admin não persistem entre deploys**. Para produção, integrar o upload ao **Supabase Storage** e salvar apenas a URL no banco.
+| Modal mobile-first com bottom sheet e pills de variação | ✅ Implementado |
+| Múltiplas fotos por produto (galeria 4 slots) | ✅ Implementado |
+| Toggle ativo/destaque clicável na listagem admin | ✅ Implementado |
+| Promoções com data início/fim + expiração automática | ✅ Implementado |
+| Hint de arredondamento para produtos por peso | ✅ Implementado |
+| Sugestão de valor ao cliente no produto peso | ✅ Implementado |
+| **Gestão de pedidos no painel** (visualizar, trocar status) | 🔲 Pendente |
+| **Fechamento de caixa** (resumo do dia/período) | 🔲 Pendente |
+| **Importação CSV** de produtos em massa | 🔲 Pendente |
+| **Gestão de frete por bairro** no painel | 🔲 Pendente |
+| **Montador de kits** no painel | 🔲 Pendente |
 
 ---
 
@@ -362,3 +380,5 @@ O Vercel é serverless — **arquivos enviados pelo admin não persistem entre d
 - **WhatsApp restaurante:** (32) 99997-5892
 - **Instagram:** @sushigourmet
 - **Sistema financeiro interno:** Chefbox (referência visual para o painel admin)
+- **Conta Vercel/GitHub:** `n8nsushigourmet`
+- **Conta Supabase:** `jaysondainese@gmail.com`
