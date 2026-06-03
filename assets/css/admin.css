@@ -488,9 +488,15 @@ select option { background: var(--bg-card); color: var(--text); }
 .variations-list { display: flex; flex-direction: column; gap: 8px; }
 .var-row {
   display: grid;
-  grid-template-columns: 1fr 140px 32px;
+  grid-template-columns: 1fr 140px 40px 32px;
   gap: 8px;
   align-items: center;
+}
+@media (max-width: 480px) {
+  .var-row {
+    grid-template-columns: 1fr 90px 40px 30px;
+    gap: 6px;
+  }
 }
 
 /* ── Kit items ── */
