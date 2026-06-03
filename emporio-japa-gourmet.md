@@ -135,8 +135,11 @@ criado_em     TIMESTAMPTZ
 
 ### `variacoes`
 ```
-id, produto_id, rotulo, preco
+id, produto_id, rotulo, preco, ativo BOOLEAN DEFAULT true
 ```
+> `ativo` adicionada manualmente via SQL Editor em 2026-06-03.  
+> `api/produtos.js` filtra `v.ativo === true` antes de retornar ao frontend.  
+> `api/admin/produtos.js` lê, persiste e expõe o campo nas operações GET/POST/PUT.
 
 ### `kits`
 ```
@@ -225,20 +228,26 @@ Produto vendido por peso/quantidade arbitrária.
 - Header: logo + busca accent-insensitive + botão carrinho com badge
 - Hero: foto de capa, título tipográfico, tags de horário e localização
 - Navegação de categorias: pills deslizáveis, sticky
-- Grid de produtos responsivo (2–5 colunas)
-- Card de produto:
-  - Foto (usa `fotos[0]` ou `foto` como fallback)
+- Grid de produtos responsivo (2–5 colunas), gap 8px no mobile
+- Card de produto (mobile-first, tipografia ajustada):
+  - Foto: `aspect-ratio: 4/3`, usa `fotos[0]` ou `foto` como fallback
+  - Navegação de fotos com setas ←/→ quando há múltiplas fotos (fade 150ms; setas visíveis só no hover em desktop)
   - Badges: Promoção, Kit, Destaque
-  - Seletor de variação (pills inline no card)
-  - Input de quantidade para produtos `peso`
-  - Hint de arredondamento para múltiplos
-  - Botão "+" adicionar ao carrinho
-  - Clique no card abre modal de produto
+  - Nome: 13px/600, 2 linhas com ellipsis
+  - Descrição: 11px, 1 linha com ellipsis
+  - Preço: 15px/500
+  - Variação: exibe **"A partir de R$ X,XX"** — sem pills no card
+  - Peso: exibe "R$ X,XX/unidade" — sem input no card
+  - Badge de ação: "Ver opções" (variação) / "Escolher quantidade" (peso) → abre modal
+  - Produto simples: botão adiciona direto ao carrinho
+  - Produtos `variacao` com `variacoes[]` vazio ficam ocultos do grid
 - Modal de produto (mobile-first):
   - **Mobile (≤480px):** bottom sheet 85dvh, foto 16/9, variações em pills antes do preço, botão fixo 52px no rodapé, swipe down no handle fecha
-  - **Desktop (769px+):** modal 480px centralizado, foto quadrada à esquerda (200px), info à direita, animação fade+scale; hierarquia visual ajustada: nome 20px → pills 12px/gap 6px → preço 18px + botão 36px na mesma linha
+  - **Desktop (769px+):** modal 480px centralizado, foto quadrada à esquerda (200px), info à direita, animação fade+scale
   - Pills de variação estilo ML/Shopee: `[rótulo  R$ preço]`, selecionado = marrom escuro + creme
   - Preço no rodapé atualiza ao trocar variação
+  - Input de quantidade (tipo peso): `font-size: 16px` (evita zoom no iOS), `inputmode="numeric"`, `height: 40px`
+  - Validação inline: "Quantidade mínima: Xg" / "Quantidade máxima: Xg" — erro some ao editar
 - Carrinho:
   - Barra flutuante ao adicionar primeiro item
   - Modal com lista de itens, controle +/−/remover
@@ -261,9 +270,12 @@ Produto vendido por peso/quantidade arbitrária.
   - Formulário completo: nome, descrição, categoria, tipo, preços
   - Galeria de até 4 fotos: upload por slot, foto principal (slot 0), remover por slot
   - Upload via `?action=upload` → Supabase Storage → URL salva no JSONB `fotos`
-  - Variações dinâmicas: adicionar/remover rótulo+preço
+  - Variações dinâmicas: adicionar/remover; cada linha tem `[Rótulo] [Preço] [Toggle ativo] [X]` em uma linha (grid `1fr 140px 40px 32px`; mobile `1fr 90px 40px 30px`)
+  - Toggle ativo por variação: ligado = aparece no site, desligado = oculto; novas variações iniciam ativas
   - Campos de promoção com datas início/fim
   - Campos específicos para tipo `peso`: preco_unidade, unidade_label, min/max/multiplo
+  - **Botão duplicar:** ícone de cópia antes de editar/excluir na tabela; cria "Cópia de [Nome]" com `ativo=false` e `destaque=false`; variações copiadas sem id
+  - **Drag-and-drop de fotos:** reordenação dos slots de foto diretamente no formulário
 - **Categorias:** CRUD básico
 - **Pedidos:** listagem, troca de status
 - **Fretes:** CRUD de cidades e bairros
@@ -363,15 +375,24 @@ emporio-do-japa-gourmet/
 |---|---|
 | Modal de produto mobile-first (bottom sheet + pills + ajustes desktop) | ✅ Implementado |
 | Múltiplas fotos por produto (galeria 4 slots) | ✅ Implementado |
+| Drag-and-drop para reordenar fotos no painel | ✅ Implementado |
+| Navegação de fotos no card com setas (fade 150ms) | ✅ Implementado |
 | Toggle ativo/destaque clicável na listagem admin | ✅ Implementado |
 | Promoções com data início/fim + expiração automática | ✅ Implementado |
+| Cards mobile-first sem pills/input (tipografia ajustada) | ✅ Implementado |
+| "A partir de R$ X,XX" para produtos com variação | ✅ Implementado |
+| Input peso sem zoom iOS (`font-size: 16px`) | ✅ Implementado |
+| Validação de quantidade no modal com erros inline | ✅ Implementado |
+| Botão duplicar produto no painel | ✅ Implementado |
+| Coluna `ativo` na tabela `variacoes` | ✅ Implementado (2026-06-03) |
+| Toggle ativo por variação no formulário do produto | ✅ Implementado |
 | Hint de arredondamento para produtos por peso | ✅ Implementado |
-| Sugestão de valor ao cliente no produto peso | ✅ Implementado |
 | **Gestão de pedidos no painel** (visualizar, trocar status) | 🔲 Pendente |
 | **Fechamento de caixa** (resumo do dia/período) | 🔲 Pendente |
 | **Importação CSV** de produtos em massa | 🔲 Pendente |
 | **Gestão de frete por bairro** no painel | 🔲 Pendente |
 | **Montador de kits** no painel | 🔲 Pendente |
+| DNS `emporio.sushigourmet.com.br` → Vercel | 🔲 Pendente |
 
 ---
 
