@@ -331,7 +331,8 @@ function criarCard(produto) {
 
   /* Imagem */
   const imgWrap = card.querySelector('.card-img-wrap');
-  const primeiraFoto = produto.fotos?.[0] || produto.foto || null;
+  const fotos = produto.fotos?.length ? produto.fotos : (produto.foto ? [produto.foto] : []);
+  const primeiraFoto = fotos[0] || null;
   if (primeiraFoto) {
     const img = card.querySelector('.card-img');
     img.src = primeiraFoto;
@@ -342,6 +343,28 @@ function criarCard(produto) {
     ph.className = 'card-img-placeholder';
     ph.textContent = produto.emoji || '🍱';
     imgWrap.insertBefore(ph, imgWrap.firstChild);
+  }
+
+  if (fotos.length > 1) {
+    let cardFotoAtiva = 0;
+    const imgEl = card.querySelector('.card-img');
+    const chvL = '<svg viewBox="0 0 20 20" fill="none"><path d="M13 5L8 10l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const chvR = '<svg viewBox="0 0 20 20" fill="none"><path d="M7 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    ['prev', 'next'].forEach(dir => {
+      const btn = document.createElement('button');
+      btn.className = `card-nav card-nav-${dir}`;
+      btn.setAttribute('aria-label', dir === 'prev' ? 'Foto anterior' : 'Próxima foto');
+      btn.innerHTML = dir === 'prev' ? chvL : chvR;
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        cardFotoAtiva = dir === 'prev'
+          ? (cardFotoAtiva - 1 + fotos.length) % fotos.length
+          : (cardFotoAtiva + 1) % fotos.length;
+        imgEl.style.opacity = '0';
+        setTimeout(() => { imgEl.src = fotos[cardFotoAtiva]; imgEl.style.opacity = '1'; }, 150);
+      });
+      imgWrap.appendChild(btn);
+    });
   }
 
   /* Badges */
@@ -357,48 +380,11 @@ function criarCard(produto) {
   if (produto.descricao) descEl.textContent = produto.descricao;
   else descEl.remove();
 
-  /* Peso/Quantidade */
-  if (produto.tipo === 'peso') {
-    const { suffix } = parsePesoUnit(produto.unidade_label);
-    const min = produto.quantidade_minima || 1;
-    const step = produto.multiplo_de || 1;
-    const pesoWrap = document.createElement('div');
-    pesoWrap.className = 'card-peso';
-    pesoWrap.innerHTML = `<div class="peso-row"><input type="number" class="peso-qty-input" min="${min}" step="${step}" placeholder="${min}" aria-label="Quantidade"><span class="peso-unit">${suffix}</span></div><div class="peso-hint" style="display:none"></div>`;
-    card.querySelector('.card-body').insertBefore(pesoWrap, card.querySelector('.card-footer'));
-  }
-
   atualizarPrecoCard(card, produto);
 
   /* Botão adicionar */
   const addBtn = card.querySelector('.card-add-btn');
-  if (produto.tipo === 'peso') {
-    addBtn.disabled = true;
-    const qtyInput = card.querySelector('.peso-qty-input');
-    const hintEl = card.querySelector('.peso-hint');
-    const { suffix: sfx } = parsePesoUnit(produto.unidade_label);
-    const step = produto.multiplo_de || 1;
-    qtyInput.addEventListener('input', () => {
-      atualizarPrecoCard(card, produto);
-      const qty = parseFloat(qtyInput.value);
-      const min = produto.quantidade_minima || 1;
-      const max = produto.quantidade_maxima;
-      const valido = qty && qty >= min && (!max || qty <= max);
-      addBtn.disabled = !valido;
-      if (valido && step > 1 && qty % step !== 0) {
-        const sugerido = Math.ceil(qty / step) * step;
-        hintEl.innerHTML = `💡 Sugerimos arredondar para ${sugerido}${sfx} <button class="peso-hint-btn" type="button">Usar ${sugerido}${sfx}</button>`;
-        hintEl.style.display = '';
-        hintEl.querySelector('.peso-hint-btn').addEventListener('click', () => {
-          qtyInput.value = sugerido;
-          qtyInput.dispatchEvent(new Event('input'));
-        });
-      } else {
-        hintEl.style.display = 'none';
-      }
-    });
-  }
-  if (produto.tipo === 'variacao') {
+  if (produto.tipo === 'variacao' || produto.tipo === 'peso') {
     addBtn.addEventListener('click', (e) => { e.stopPropagation(); abrirModalProduto(produto); });
   } else {
     addBtn.addEventListener('click', () => adicionarAoCarrinho(produto, card, addBtn));
@@ -422,14 +408,8 @@ function atualizarPrecoCard(card, produto) {
     priceEl.insertAdjacentHTML('beforeend', `<span class="price-from">A partir de ${brl(menorPreco)}</span>`);
     priceEl.insertAdjacentHTML('beforeend', `<span class="price-ver-opcoes">Ver opções</span>`);
   } else if (produto.tipo === 'peso') {
-    const input = card.querySelector('.peso-qty-input');
-    const qty = input ? parseFloat(input.value) : 0;
-    const { base } = parsePesoUnit(produto.unidade_label);
-    if (qty > 0 && produto.preco_unidade != null) {
-      priceEl.insertAdjacentHTML('beforeend', `<span class="price-normal">${brl((qty / base) * produto.preco_unidade)}</span>`);
-    } else {
-      priceEl.insertAdjacentHTML('beforeend', `<span class="price-unit">${brl(produto.preco_unidade)}/${produto.unidade_label||'un'}</span>`);
-    }
+    priceEl.insertAdjacentHTML('beforeend', `<span class="price-unit">${brl(produto.preco_unidade)}/${produto.unidade_label||'un'}</span>`);
+    priceEl.insertAdjacentHTML('beforeend', `<span class="price-ver-opcoes">Escolher quantidade</span>`);
   } else if (produto.promo) {
     priceEl.insertAdjacentHTML('beforeend', `<span class="price-original">${brl(produto.preco_original)}</span>`);
     priceEl.insertAdjacentHTML('beforeend', `<span class="price-promo">${brl(produto.preco_promo)}</span>`);
@@ -822,9 +802,10 @@ function abrirModalProduto(produto) {
     const step = produto.multiplo_de || 1;
     varHtml = `<div class="pmodal-peso">
       <div class="peso-row">
-        <input type="number" class="peso-qty-input" id="pm-qty" min="${min}" step="${step}" placeholder="${min}" aria-label="Quantidade">
+        <input type="number" class="peso-qty-input" id="pm-qty" min="${min}" step="${step}" placeholder="${min}" aria-label="Quantidade" inputmode="numeric" pattern="[0-9]*">
         <span class="peso-unit">${suffix}</span>
       </div>
+      <div class="pm-qty-error" id="pm-qty-error" style="display:none"></div>
       <div class="peso-hint" id="pm-hint" style="display:none"></div>
     </div>`;
   }
@@ -886,6 +867,8 @@ function abrirModalProduto(produto) {
     const { suffix: sfx, base } = parsePesoUnit(produto.unidade_label);
     const step = produto.multiplo_de || 1;
     input.addEventListener('input', () => {
+      const errorEl = $('#pm-qty-error');
+      if (errorEl) errorEl.style.display = 'none';
       const qty = parseFloat(input.value);
       const min = produto.quantidade_minima || 1;
       const max = produto.quantidade_maxima;
@@ -954,7 +937,24 @@ function pmAdicionarCarrinho() {
     const qty = parseFloat(input?.value);
     const min = produto.quantidade_minima || 1;
     const max = produto.quantidade_maxima;
-    if (!qty || qty < min || (max && qty > max)) return;
+    const errorEl = $('#pm-qty-error');
+    if (!qty || qty < min) {
+      if (errorEl) {
+        const { suffix: sfx } = parsePesoUnit(produto.unidade_label);
+        errorEl.textContent = `Quantidade mínima: ${min}${sfx}`;
+        errorEl.style.display = '';
+      }
+      return;
+    }
+    if (max && qty > max) {
+      if (errorEl) {
+        const { suffix: sfx } = parsePesoUnit(produto.unidade_label);
+        errorEl.textContent = `Quantidade máxima: ${max}${sfx}`;
+        errorEl.style.display = '';
+      }
+      return;
+    }
+    if (errorEl) errorEl.style.display = 'none';
     const { base, suffix } = parsePesoUnit(produto.unidade_label);
     preco = (qty / base) * produto.preco_unidade;
     variacao = { rotulo: qty + suffix };
