@@ -319,6 +319,7 @@ function prodRow(p) {
         ${p.promo ? ` <span class="badge ${promoExpirada(p) ? 'badge-inativo' : 'badge-promo'}">${promoExpirada(p) ? 'Promo expirada' : 'Promo'}</span>` : ''}
       </td>
       <td><div class="td-actions">
+        <button class="btn-icon" title="Duplicar" onclick="duplicarProduto('${p.id}')"><svg viewBox="0 0 20 20" fill="none"><rect x="7" y="7" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M13 7V5a1.5 1.5 0 00-1.5-1.5h-6A1.5 1.5 0 004 5v6A1.5 1.5 0 005.5 12.5H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
         <button class="btn-icon" title="Editar" onclick="editProduto('${p.id}')">✏️</button>
         <button class="btn-icon danger" title="Excluir" onclick="deleteProduto('${p.id}','${esc(p.nome)}')">🗑️</button>
       </div></td>
@@ -574,6 +575,35 @@ async function deleteProduto(id, nome) {
   if (!confirm(`Excluir "${nome}"? Esta ação não pode ser desfeita.`)) return;
   const ok = await http('DELETE', `/api/admin/produtos?id=${id}`);
   if (ok !== null) { showFlash('Produto excluído.'); loadProdutos(); }
+}
+
+async function duplicarProduto(id) {
+  const p = _prodCache.get(String(id));
+  if (!p) return;
+  const body = {
+    nome:              'Cópia de ' + p.nome,
+    descricao:         p.descricao || null,
+    foto:              p.foto || null,
+    fotos:             p.fotos || [],
+    tipo:              p.tipo,
+    categoria_id:      p.categoria_id || null,
+    ativo:             false,
+    destaque:          false,
+    promo:             p.promo || false,
+    preco:             p.preco || null,
+    preco_original:    p.preco_original || null,
+    preco_promo:       p.preco_promo || null,
+    promo_inicio:      p.promo_inicio || null,
+    promo_fim:         p.promo_fim || null,
+    preco_unidade:     p.preco_unidade || null,
+    unidade_label:     p.unidade_label || null,
+    quantidade_minima: p.quantidade_minima || null,
+    quantidade_maxima: p.quantidade_maxima || null,
+    multiplo_de:       p.multiplo_de || null,
+    variacoes:         (p.variacoes || []).map(v => ({ rotulo: v.rotulo, preco: v.preco })),
+  };
+  const ok = await http('POST', '/api/admin/produtos', body);
+  if (ok !== null) { showFlash('Produto duplicado com sucesso!'); loadProdutos(); }
 }
 
 function promoExpirada(p) {
