@@ -461,11 +461,12 @@ function pfRenderVars() {
         <div class="var-row">
           <input type="text"   value="${esc(v.rotulo)}" placeholder="Rótulo (ex: 100g)" oninput="_modalVars[${i}].rotulo=this.value">
           <input type="number" value="${v.preco??''}" placeholder="Preço" step="0.01" min="0" oninput="_modalVars[${i}].preco=parseFloat(this.value)||0">
+          <label class="toggle" title="${v.ativo !== false ? 'Ativa' : 'Inativa'}" style="flex-shrink:0"><input type="checkbox" ${v.ativo !== false ? 'checked':''} onchange="_modalVars[${i}].ativo=this.checked"><div class="toggle-track"></div></label>
           <button type="button" class="btn-icon danger" onclick="pfRemoveVar(${i})">✕</button>
         </div>`).join('')
     : '<div class="text-dim" style="font-size:13px;padding:6px 0">Clique em + para adicionar variações.</div>';
 }
-function pfAddVar()     { _modalVars.push({rotulo:'',preco:0}); pfRenderVars(); }
+function pfAddVar()     { _modalVars.push({rotulo:'',preco:0,ativo:true}); pfRenderVars(); }
 function pfRemoveVar(i) { _modalVars.splice(i,1); pfRenderVars(); }
 
 function pfRenderFotos() {

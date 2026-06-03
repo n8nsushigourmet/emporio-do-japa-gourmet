@@ -82,7 +82,7 @@ const handler = async (req, res) => {
     if (req.method === 'GET') {
       const { data, error } = await supabase
         .from('produtos')
-        .select('*, categorias(nome), variacoes(id, rotulo, preco)')
+        .select('*, categorias(nome), variacoes(id, rotulo, preco, ativo)')
         .order('criado_em', { ascending: false })
       if (error) throw error
       return res.json((data || []).map(mapProduto))
@@ -108,7 +108,7 @@ const handler = async (req, res) => {
       if (error) throw error
       if (Array.isArray(variacoes) && variacoes.length) {
         const { error: eV } = await supabase.from('variacoes').insert(
-          variacoes.map(v => ({ produto_id: p.id, rotulo: v.rotulo, preco: v.preco }))
+          variacoes.map(v => ({ produto_id: p.id, rotulo: v.rotulo, preco: v.preco, ativo: v.ativo !== false }))
         )
         if (eV) throw eV
       }
@@ -148,7 +148,7 @@ const handler = async (req, res) => {
         if (eD) throw eD
         if (variacoes.length) {
           const { error: eV } = await supabase.from('variacoes').insert(
-            variacoes.map(v => ({ produto_id: id, rotulo: v.rotulo, preco: v.preco }))
+            variacoes.map(v => ({ produto_id: id, rotulo: v.rotulo, preco: v.preco, ativo: v.ativo !== false }))
           )
           if (eV) throw eV
         }
