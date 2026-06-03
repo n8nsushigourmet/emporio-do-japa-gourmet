@@ -247,6 +247,7 @@ function renderizarCategorias() {
 
 function produtosFiltrados() {
   let lista = state.produtos.filter(p => p.ativo);
+  lista = lista.filter(p => p.tipo !== 'variacao' || (p.variacoes?.length > 0));
 
   if (state.busca) {
     const q = normalizar(state.busca);
@@ -356,25 +357,6 @@ function criarCard(produto) {
   if (produto.descricao) descEl.textContent = produto.descricao;
   else descEl.remove();
 
-  /* Variações */
-  const varWrap = card.querySelector('.card-variations');
-  if (produto.tipo === 'variacao' && produto.variacoes?.length) {
-    varWrap.hidden = false;
-    produto.variacoes.forEach((v, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'var-btn' + (i === 0 ? ' selected' : '');
-      btn.dataset.varId = v.id;
-      btn.dataset.preco = v.preco;
-      btn.textContent = v.rotulo;
-      btn.addEventListener('click', () => {
-        $$('.var-btn', varWrap).forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        atualizarPrecoCard(card, produto);
-      });
-      varWrap.appendChild(btn);
-    });
-  }
-
   /* Peso/Quantidade */
   if (produto.tipo === 'peso') {
     const { suffix } = parsePesoUnit(produto.unidade_label);
@@ -416,11 +398,15 @@ function criarCard(produto) {
       }
     });
   }
-  addBtn.addEventListener('click', () => adicionarAoCarrinho(produto, card, addBtn));
+  if (produto.tipo === 'variacao') {
+    addBtn.addEventListener('click', (e) => { e.stopPropagation(); abrirModalProduto(produto); });
+  } else {
+    addBtn.addEventListener('click', () => adicionarAoCarrinho(produto, card, addBtn));
+  }
 
   card.style.cursor = 'pointer';
   card.addEventListener('click', e => {
-    if (e.target.closest('.card-add-btn, .var-btn, .peso-qty-input, .peso-hint-btn')) return;
+    if (e.target.closest('.card-add-btn, .peso-qty-input, .peso-hint-btn')) return;
     abrirModalProduto(produto);
   });
 
@@ -432,9 +418,9 @@ function atualizarPrecoCard(card, produto) {
   priceEl.innerHTML = '';
 
   if (produto.tipo === 'variacao') {
-    const sel = card.querySelector('.var-btn.selected');
-    const preco = sel ? Number(sel.dataset.preco) : produto.variacoes[0]?.preco;
-    priceEl.insertAdjacentHTML('beforeend', `<span class="price-normal">${brl(preco)}</span>`);
+    const menorPreco = produto.variacoes[0]?.preco;
+    priceEl.insertAdjacentHTML('beforeend', `<span class="price-from">A partir de ${brl(menorPreco)}</span>`);
+    priceEl.insertAdjacentHTML('beforeend', `<span class="price-ver-opcoes">Ver opções</span>`);
   } else if (produto.tipo === 'peso') {
     const input = card.querySelector('.peso-qty-input');
     const qty = input ? parseFloat(input.value) : 0;

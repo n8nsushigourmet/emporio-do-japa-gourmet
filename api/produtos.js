@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('produtos')
-      .select('id, categoria_id, nome, descricao, foto, fotos, tipo, preco, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de, variacoes(id, rotulo, preco)')
+      .select('id, categoria_id, nome, descricao, foto, fotos, tipo, preco, destaque, ativo, promo, preco_original, preco_promo, promo_inicio, promo_fim, preco_unidade, unidade_label, quantidade_minima, quantidade_maxima, multiplo_de, variacoes(id, rotulo, preco, ativo)')
       .eq('ativo', true)
       .order('destaque', { ascending: false })
       .order('criado_em')
@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
         quantidade_minima: quantidade_minima != null ? Number(quantidade_minima) : null,
         quantidade_maxima: quantidade_maxima != null ? Number(quantidade_maxima) : null,
         multiplo_de: multiplo_de != null ? Number(multiplo_de) : null,
-        variacoes: (variacoes || []).map(v => ({ ...v, preco: Number(v.preco) })).sort((a, b) => a.preco - b.preco)
+        variacoes: (variacoes || []).filter(v => v.ativo).map(v => ({ id: v.id, rotulo: v.rotulo, preco: Number(v.preco) })).sort((a, b) => a.preco - b.preco)
       }
     })
 

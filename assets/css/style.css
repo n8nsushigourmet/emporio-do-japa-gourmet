@@ -376,7 +376,7 @@ a { color: inherit; text-decoration: none; }
 .products-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 @media (min-width: 481px) { .products-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 769px) { .products-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
@@ -397,7 +397,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 2px 6px rgba(44,26,14,.1), 0 8px 24px rgba(44,26,14,.1);
 }
 
-.card-img-wrap { position: relative; aspect-ratio: 1; overflow: hidden; background: var(--creme); }
+.card-img-wrap { position: relative; aspect-ratio: 4/3; overflow: hidden; background: var(--creme); }
 .card-img {
   width: 100%;
   height: 100%;
@@ -439,14 +439,14 @@ a { color: inherit; text-decoration: none; }
 .badge-destaque { background: rgba(255,255,255,.9); color: var(--marrom-escuro); }
 
 .card-body {
-  padding: 12px;
+  padding: 8px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 .card-name {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--texto);
   line-height: 1.3;
@@ -456,11 +456,11 @@ a { color: inherit; text-decoration: none; }
   overflow: hidden;
 }
 .card-desc {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--texto-suave);
   line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -502,13 +502,13 @@ a { color: inherit; text-decoration: none; }
   text-decoration: line-through;
 }
 .price-promo {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 500;
   color: var(--ambar);
 }
 .price-normal {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 500;
   color: var(--marrom-escuro);
 }
 
@@ -911,6 +911,17 @@ a { color: inherit; text-decoration: none; }
   font-size: 12px;
   font-weight: 600;
   color: var(--texto-suave);
+}
+.price-from {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--marrom-escuro);
+}
+.price-ver-opcoes {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--texto-suave);
+  margin-top: 1px;
 }
 .card-add-btn:disabled {
   background: var(--creme-escuro);
